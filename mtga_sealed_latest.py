@@ -2,8 +2,9 @@ import random
 import tkinter as tk
 from tkinter import font
 import webbrowser
+from PIL import Image, ImageTk   # <-- kräver pillow
 
-# ================= SET LIST (MTGA HISTORICAL, NO JUMPSTART) =================
+# ================= SET LIST =================
 
 arena_sets = {
     "Core Set 2021": "M21",
@@ -83,7 +84,7 @@ def roll():
     for i in range(players):
         url = f"https://draftsim.com/draft.php?mode=Sealed_{code}"
         btn = tk.Button(
-            sealed_frame,
+            main_frame,
             text=f"Sealed {number_names[i]}",
             command=lambda u=url: webbrowser.open(u)
         )
@@ -107,47 +108,53 @@ def reset():
 root = tk.Tk()
 root.title("MTG Arena – Sealed")
 root.geometry("740x760")
-root.configure(bg="#0b1a23")
+root.resizable(False, False)
+
+# --- BACKGROUND ---
+bg_image = Image.open("background.png").resize((740, 760))
+bg_photo = ImageTk.PhotoImage(bg_image)
+
+bg_label = tk.Label(root, image=bg_photo)
+bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+# --- CONTENT FRAME (transparent feeling) ---
+main_frame = tk.Frame(root, bg="#000000", highlightthickness=0)
+main_frame.place(relwidth=1, relheight=1)
 
 title_font = font.Font(size=24, weight="bold")
 result_font = font.Font(size=20, weight="bold")
 list_font = font.Font(size=10)
 
 tk.Label(
-    root,
+    main_frame,
     text="MTG ARENA – SEALED",
     fg="#f5d76e",
-    bg="#0b1a23",
+    bg="#000000",
     font=title_font
 ).pack(pady=10)
 
 result_label = tk.Label(
-    root,
+    main_frame,
     text="ROLL",
     fg="white",
-    bg="#0b1a23",
+    bg="#000000",
     font=result_font
 )
 result_label.pack(pady=6)
 
 # Players
-player_frame = tk.Frame(root, bg="#0b1a23")
+player_frame = tk.Frame(main_frame, bg="#000000")
 player_frame.pack(pady=2)
 
-tk.Label(player_frame, text="Players:", fg="white", bg="#0b1a23").pack(side="left")
+tk.Label(player_frame, text="Players:", fg="white", bg="#000000").pack(side="left")
 player_count = tk.IntVar(value=2)
 tk.OptionMenu(player_frame, player_count, *range(2, 9)).pack(side="left", padx=6)
 
-# Controls
-tk.Button(root, text="🎲", font=font.Font(size=36), command=roll).pack(pady=4)
-tk.Button(root, text="Reset", command=reset).pack(pady=4)
+tk.Button(main_frame, text="🎲", font=font.Font(size=36), command=roll).pack(pady=4)
+tk.Button(main_frame, text="Reset", command=reset).pack(pady=4)
 
-sealed_frame = tk.Frame(root, bg="#0b1a23")
-sealed_frame.pack(pady=6)
-
-# ================= SET GRID (NO SCROLL) =================
-
-grid_frame = tk.Frame(root, bg="#0b1a23")
+# --- SET GRID ---
+grid_frame = tk.Frame(main_frame, bg="#000000")
 grid_frame.pack(pady=10)
 
 labels = []
@@ -159,7 +166,7 @@ for name in arena_sets:
         grid_frame,
         text=name,
         fg="#9fb3c8",
-        bg="#0b1a23",
+        bg="#000000",
         font=list_font,
         cursor="hand2",
         anchor="w",
