@@ -2,10 +2,10 @@ import random
 import tkinter as tk
 from tkinter import font
 import webbrowser
-import os
 
 WINDOW_W = 740
 WINDOW_H = 760
+BG_COLOR = "#0b1026"   # mörk blå-lila
 
 arena_sets = {
     "Core Set 2021": "M21",
@@ -105,32 +105,36 @@ root = tk.Tk()
 root.title("MTG Arena – Sealed")
 root.geometry(f"{WINDOW_W}x{WINDOW_H}")
 root.resizable(False, False)
+root.configure(bg=BG_COLOR)
 
-# BACKGROUND
-if os.path.exists("background.png"):
-    bg_img = tk.PhotoImage(file="background.png")
-    bg_label = tk.Label(root, image=bg_img)
-    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-
-# MAIN FRAME (transparent)
-main_frame = tk.Frame(root)
+main_frame = tk.Frame(root, bg=BG_COLOR)
 main_frame.place(relwidth=1, relheight=1)
 
 title_font = font.Font(size=24, weight="bold")
 result_font = font.Font(size=20, weight="bold")
 list_font = font.Font(size=10)
 
-tk.Label(main_frame, text="MTG ARENA – SEALED",
-         fg="#f5d76e", font=title_font).pack(pady=10)
+tk.Label(
+    main_frame,
+    text="MTG ARENA – SEALED",
+    fg="#f5d76e",
+    bg=BG_COLOR,
+    font=title_font
+).pack(pady=10)
 
-result_label = tk.Label(main_frame, text="ROLL",
-                        fg="white", font=result_font)
+result_label = tk.Label(
+    main_frame,
+    text="ROLL",
+    fg="white",
+    bg=BG_COLOR,
+    font=result_font
+)
 result_label.pack(pady=6)
 
-player_frame = tk.Frame(main_frame)
+player_frame = tk.Frame(main_frame, bg=BG_COLOR)
 player_frame.pack(pady=2)
 
-tk.Label(player_frame, text="Players:", fg="white").pack(side="left")
+tk.Label(player_frame, text="Players:", fg="white", bg=BG_COLOR).pack(side="left")
 player_count = tk.IntVar(value=2)
 tk.OptionMenu(player_frame, player_count, *range(2,9)).pack(side="left", padx=6)
 
@@ -138,18 +142,25 @@ tk.Button(main_frame, text="🎲", font=font.Font(size=36),
           command=roll).pack(pady=4)
 tk.Button(main_frame, text="Reset", command=reset).pack(pady=4)
 
-sealed_frame = tk.Frame(main_frame)
+sealed_frame = tk.Frame(main_frame, bg=BG_COLOR)
 sealed_frame.pack(pady=8)
 
-grid_frame = tk.Frame(main_frame)
+grid_frame = tk.Frame(main_frame, bg=BG_COLOR)
 grid_frame.pack(pady=10)
 
 labels = []
 row = col = 0
 for name in arena_sets:
-    lbl = tk.Label(grid_frame, text=name,
-                   fg="#9fb3c8", font=list_font,
-                   cursor="hand2", anchor="w", padx=8)
+    lbl = tk.Label(
+        grid_frame,
+        text=name,
+        fg="#9fb3c8",
+        bg=BG_COLOR,
+        font=list_font,
+        cursor="hand2",
+        anchor="w",
+        padx=8
+    )
     lbl.grid(row=row, column=col, sticky="w", pady=2)
     lbl.bind("<Button-1>", lambda e,n=name,l=lbl: toggle(l,n))
     labels.append(lbl)
