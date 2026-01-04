@@ -7,6 +7,20 @@ WIN = 3
 DRAW = 1
 MAX_PLAYERS = 8
 
+MEDAL_ORDER = {
+    "🥇": 0,
+    "🥈": 1,
+    "🥉": 2,
+    "":  3
+}
+
+MEDAL_COLOR = {
+    "🥇": "#ffd700",
+    "🥈": "#dcdcdc",
+    "🥉": "#cd7f32",
+    "": "white"
+}
+
 
 class SealedTournament:
     def __init__(self, root):
@@ -15,10 +29,9 @@ class SealedTournament:
         self.root.geometry("1300x850")
         self.root.configure(bg=BG)
 
-        # ---- State ----
         self.players = []
         self.best_of_group = tk.IntVar(value=3)
-        self.best_of_playoff = tk.IntVar(value=3)
+        self.best_of_playoff = tk.IntVar(value=1)
         self.max_rounds = tk.IntVar(value=3)
 
         self.current_round = 0
@@ -26,8 +39,7 @@ class SealedTournament:
 
         self.in_playoffs = False
         self.playoff_scores = {}
-        self.playoff_matches = {}   # match_name -> (a, b)
-        self.medals = {}            # player -> 🥇🥈🥉
+        self.medals = {}
 
         self.undo_stack = []
 
@@ -38,6 +50,7 @@ class SealedTournament:
         self.title_font = font.Font(size=26, weight="bold")
         self.header_font = font.Font(size=16, weight="bold")
         self.text_font = font.Font(size=13)
+        self.medal_font = font.Font(size=18, weight="bold")
 
         tk.Label(
             self.root,
@@ -50,7 +63,7 @@ class SealedTournament:
         setup = tk.Frame(self.root, bg=BG)
         setup.pack()
 
-        tk.Label(setup, text="Best of (Group):", fg="white", bg=BG,
+        tk.Label(setup, text="Best of (Matches):", fg="white", bg=BG,
                  font=self.text_font).grid(row=0, column=0, padx=4)
         tk.OptionMenu(setup, self.best_of_group, 1, 3, 5, 7)\
             .grid(row=0, column=1)
@@ -127,9 +140,9 @@ class SealedTournament:
             "players": self.players[:],
             "current_round": self.current_round,
             "round_results": copy.deepcopy(self.round_results),
-            "in_playoffs": self.in_playoffs,
             "playoff_scores": copy.deepcopy(self.playoff_scores),
-            "medals": copy.deepcopy(self.medals)
+            "medals": copy.deepcopy(self.medals),
+            "in_playoffs": self.in_playoffs
         })
 
     def undo(self):
@@ -140,9 +153,9 @@ class SealedTournament:
         self.players = state["players"]
         self.current_round = state["current_round"]
         self.round_results = state["round_results"]
-        self.in_playoffs = state["in_playoffs"]
         self.playoff_scores = state["playoff_scores"]
         self.medals = state["medals"]
+        self.in_playoffs = state["in_playoffs"]
 
         if self.in_playoffs:
             self.render_playoffs()
@@ -167,44 +180,8 @@ class SealedTournament:
                 w.destroy()
 
         self.info.config(
-            text=f"GROUP STAGE – ROUND {self.current_round}/{self.max_rounds.get()} "
-                 f"(Bo{self.best_of_group.get()})"
+            text=f"GROUP STAGE – ROUND {self.current_round}/{self.max_rounds.get()}"
         )
-
-        temp = self.players[:]
-        while len(temp) >= 2:
-            a = temp.pop(0)
-            b = temp.pop(0)
-            self.match_row(a, b)
-
-        self.update_group_scoreboard()
-
-    def match_row(self, a, b):
-        row = tk.Frame(self.match_frame, bg=BG)
-        row.pack(pady=6)
-
-        tk.Label(row, text=f"{a} vs {b}",
-                 fg="white", bg=BG,
-                 font=self.text_font,
-                 width=28).pack(side="left")
-
-        tk.Button(row, text=a, font=self.text_font,
-                  command=lambda: self.result(a, b, "A")).pack(side="left", padx=2)
-        tk.Button(row, text="Draw", font=self.text_font,
-                  command=lambda: self.result(a, b, "D")).pack(side="left", padx=2)
-        tk.Button(row, text=b, font=self.text_font,
-                  command=lambda: self.result(a, b, "B")).pack(side="left", padx=2)
-
-    def result(self, a, b, res):
-        self.snapshot()
-
-        if res == "A":
-            self.round_results[self.current_round][a] += WIN
-        elif res == "B":
-            self.round_results[self.current_round][b] += WIN
-        else:
-            self.round_results[self.current_round][a] += DRAW
-            self.round_results[self.current_round][b] += DRAW
 
         self.update_group_scoreboard()
 
@@ -215,16 +192,12 @@ class SealedTournament:
 
         self.snapshot()
         self.current_round += 1
-        if self.current_round not in self.round_results:
-            self.round_results[self.current_round] = {p: 0 for p in self.players}
-            self.players = self.players[1:] + self.players[:1]
-
+        self.round_results[self.current_round] = {p: 0 for p in self.players}
         self.show_round()
 
     def prev_round(self):
         if self.current_round <= 1:
             return
-
         self.snapshot()
         del self.round_results[self.current_round]
         self.current_round -= 1
@@ -237,38 +210,16 @@ class SealedTournament:
 
         tk.Label(self.score_frame, text="GROUP SCOREBOARD",
                  fg="#f5d76e", bg=BG,
-                 font=self.header_font).grid(row=0, column=0, columnspan=10, pady=6)
+                 font=self.header_font).pack()
 
-        totals = {p: 0 for p in self.players}
-        for r in self.round_results.values():
-            for p, pts in r.items():
-                totals[p] += pts
+        totals = {p: sum(r.get(p, 0) for r in self.round_results.values())
+                  for p in self.players}
 
-        sorted_players = sorted(totals.items(), key=lambda x: x[1], reverse=True)
-
-        tk.Label(self.score_frame, text="Player", fg="white", bg=BG,
-                 font=self.text_font).grid(row=1, column=0, sticky="w")
-
-        for r in range(1, self.current_round + 1):
-            tk.Label(self.score_frame, text=f"R{r}", fg="white", bg=BG,
-                     font=self.text_font).grid(row=1, column=r)
-
-        tk.Label(self.score_frame, text="Total", fg="white", bg=BG,
-                 font=self.text_font).grid(row=1, column=self.current_round + 1)
-
-        for i, (p, total) in enumerate(sorted_players, start=2):
-            tk.Label(self.score_frame, text=p, fg="white", bg=BG,
-                     font=self.text_font).grid(row=i, column=0, sticky="w")
-
-            for r in range(1, self.current_round + 1):
-                val = self.round_results.get(r, {}).get(p, 0)
-                tk.Label(self.score_frame, text=str(val),
-                         fg="white", bg=BG,
-                         font=self.text_font).grid(row=i, column=r)
-
-            tk.Label(self.score_frame, text=str(total),
+        for p, pts in sorted(totals.items(), key=lambda x: x[1], reverse=True):
+            tk.Label(self.score_frame,
+                     text=f"{p}: {pts}",
                      fg="white", bg=BG,
-                     font=self.text_font).grid(row=i, column=self.current_round + 1)
+                     font=self.text_font).pack(anchor="w")
 
     # ---------------- Playoffs ----------------
     def start_playoffs(self):
@@ -276,38 +227,20 @@ class SealedTournament:
         self.in_playoffs = True
         self.medals = {}
 
-        for w in self.match_frame.winfo_children():
-            w.destroy()
-        for w in self.playoff_frame.winfo_children():
-            w.destroy()
+        self.playoff_scores = {p: 0 for p in self.players[:4]}
 
-        totals = {p: 0 for p in self.players}
-        for r in self.round_results.values():
-            for p, pts in r.items():
-                totals[p] += pts
+        self.info.config("PLAYOFFS")
 
-        ranked = sorted(totals.items(), key=lambda x: x[1], reverse=True)
-        top4 = [p for p, _ in ranked[:4]]
-
-        self.playoff_scores = {p: 0 for p in top4}
-        self.playoff_matches = {
-            "FINAL": (top4[0], top4[1]),
-            "3RD": (top4[2], top4[3])
-        }
-
-        self.info.config(
-            text=f"PLAYOFFS – Best of {self.best_of_playoff.get()}"
-        )
-
-        self.update_playoff_scoreboard()
         self.render_playoffs()
+        self.update_playoff_scoreboard()
 
     def render_playoffs(self):
         for w in self.match_frame.winfo_children():
             w.destroy()
 
-        self.playoff_match("FINAL", *self.playoff_matches["FINAL"])
-        self.playoff_match("3RD PLACE", *self.playoff_matches["3RD"])
+        p = list(self.playoff_scores.keys())
+        self.playoff_match("FINAL", p[0], p[1])
+        self.playoff_match("3RD PLACE", p[2], p[3])
 
     def update_playoff_scoreboard(self):
         for w in self.playoff_frame.winfo_children():
@@ -317,12 +250,22 @@ class SealedTournament:
                  fg="#f5d76e", bg=BG,
                  font=self.header_font).pack(pady=6)
 
-        for p, pts in self.playoff_scores.items():
+        sorted_players = sorted(
+            self.playoff_scores.keys(),
+            key=lambda p: MEDAL_ORDER.get(self.medals.get(p, ""), 3)
+        )
+
+        for p in sorted_players:
             medal = self.medals.get(p, "")
-            tk.Label(self.playoff_frame,
-                     text=f"{p}: {pts} {medal}",
-                     fg="white", bg=BG,
-                     font=self.text_font).pack(anchor="w")
+            color = MEDAL_COLOR.get(medal, "white")
+
+            tk.Label(
+                self.playoff_frame,
+                text=f"{medal}  {p}",
+                fg=color,
+                bg=BG,
+                font=self.medal_font if medal else self.text_font
+            ).pack(anchor="w")
 
     def playoff_match(self, title, a, b):
         tk.Label(self.match_frame, text=title,
@@ -336,24 +279,18 @@ class SealedTournament:
                  fg="white", bg=BG,
                  font=self.text_font).pack(side="left", padx=6)
 
-        tk.Button(row, text=a, font=self.text_font,
-                  command=lambda: self.playoff_win(title, a, b, a)).pack(side="left", padx=4)
-        tk.Button(row, text=b, font=self.text_font,
-                  command=lambda: self.playoff_win(title, a, b, b)).pack(side="left", padx=4)
+        tk.Button(row, text=a,
+                  command=lambda: self.set_winner(title, a, b)).pack(side="left", padx=4)
+        tk.Button(row, text=b,
+                  command=lambda: self.set_winner(title, b, a)).pack(side="left", padx=4)
 
-    def playoff_win(self, match_type, a, b, winner):
+    def set_winner(self, match, winner, loser):
         self.snapshot()
-        self.playoff_scores[winner] += 1
-
-        needed = self.best_of_playoff.get() // 2 + 1
-        if self.playoff_scores[winner] >= needed:
-            loser = b if winner == a else a
-
-            if match_type == "FINAL":
-                self.medals[winner] = "🥇"
-                self.medals[loser] = "🥈"
-            else:
-                self.medals[winner] = "🥉"
+        if match == "FINAL":
+            self.medals[winner] = "🥇"
+            self.medals[loser] = "🥈"
+        else:
+            self.medals[winner] = "🥉"
 
         self.update_playoff_scoreboard()
 
