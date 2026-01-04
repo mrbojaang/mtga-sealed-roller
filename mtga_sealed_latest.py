@@ -106,7 +106,7 @@ def reset():
 
 root = tk.Tk()
 root.title("MTG Arena – Sealed")
-root.geometry("740x780")
+root.geometry("740x760")
 root.configure(bg="#0b1a23")
 
 title_font = font.Font(size=24, weight="bold")
@@ -145,22 +145,10 @@ tk.Button(root, text="Reset", command=reset).pack(pady=4)
 sealed_frame = tk.Frame(root, bg="#0b1a23")
 sealed_frame.pack(pady=6)
 
-# ================= SET GRID =================
+# ================= SET GRID (NO SCROLL) =================
 
-grid_container = tk.Frame(root, bg="#0b1a23", width=640, height=360)
-grid_container.pack(pady=6)
-grid_container.pack_propagate(False)
-
-canvas = tk.Canvas(grid_container, bg="#0b1a23", highlightthickness=0)
-scroll = tk.Scrollbar(grid_container, orient="vertical", command=canvas.yview)
-inner = tk.Frame(canvas, bg="#0b1a23")
-
-inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-canvas.create_window((0, 0), window=inner, anchor="nw")
-canvas.configure(yscrollcommand=scroll.set)
-
-canvas.pack(side="left", fill="both", expand=True)
-scroll.pack(side="right", fill="y")
+grid_frame = tk.Frame(root, bg="#0b1a23")
+grid_frame.pack(pady=10)
 
 labels = []
 columns = 3
@@ -168,16 +156,16 @@ row = col = 0
 
 for name in arena_sets:
     lbl = tk.Label(
-        inner,
+        grid_frame,
         text=name,
         fg="#9fb3c8",
         bg="#0b1a23",
         font=list_font,
         cursor="hand2",
         anchor="w",
-        padx=6
+        padx=8
     )
-    lbl.grid(row=row, column=col, sticky="w", pady=1)
+    lbl.grid(row=row, column=col, sticky="w", pady=2)
     lbl.bind("<Button-1>", lambda e, n=name, l=lbl: toggle(l, n))
     labels.append(lbl)
 
