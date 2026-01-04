@@ -44,7 +44,7 @@ arena_sets = {
 excluded = set()
 reset_clicks = 0
 sealed_buttons = []
-number_names = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"]
+number_names = ["One","Two","Three","Four","Five","Six","Seven","Eight"]
 
 def toggle(label, name):
     if name in excluded:
@@ -73,11 +73,19 @@ def roll():
     result_label.config(text=chosen)
 
     code = arena_sets[chosen]
-    for i in range(player_count.get()):
+    players = player_count.get()
+
+    for i in range(players):
+        r = i // 2
+        c = i % 2
         url = f"https://draftsim.com/draft.php?mode=Sealed_{code}"
-        btn = tk.Button(main_frame, text=f"Sealed {number_names[i]}",
-                        command=lambda u=url: webbrowser.open(u))
-        btn.pack(pady=2)
+        btn = tk.Button(
+            sealed_frame,
+            text=f"Sealed {number_names[i]}",
+            width=14,
+            command=lambda u=url: webbrowser.open(u)
+        )
+        btn.grid(row=r, column=c, padx=6, pady=4)
         sealed_buttons.append(btn)
 
 def reset():
@@ -91,20 +99,21 @@ def reset():
             l.config(fg="#9fb3c8")
         reset_clicks = 0
 
+# ================= UI =================
+
 root = tk.Tk()
 root.title("MTG Arena – Sealed")
 root.geometry(f"{WINDOW_W}x{WINDOW_H}")
 root.resizable(False, False)
 
-# BACKGROUND (SAFE)
+# BACKGROUND
 if os.path.exists("background.png"):
     bg_img = tk.PhotoImage(file="background.png")
     bg_label = tk.Label(root, image=bg_img)
     bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-else:
-    root.configure(bg="#0b1a23")
 
-main_frame = tk.Frame(root, bg="#000000")
+# MAIN FRAME (transparent)
+main_frame = tk.Frame(root)
 main_frame.place(relwidth=1, relheight=1)
 
 title_font = font.Font(size=24, weight="bold")
@@ -112,36 +121,37 @@ result_font = font.Font(size=20, weight="bold")
 list_font = font.Font(size=10)
 
 tk.Label(main_frame, text="MTG ARENA – SEALED",
-         fg="#f5d76e", bg="#000000",
-         font=title_font).pack(pady=10)
+         fg="#f5d76e", font=title_font).pack(pady=10)
 
 result_label = tk.Label(main_frame, text="ROLL",
-                        fg="white", bg="#000000",
-                        font=result_font)
+                        fg="white", font=result_font)
 result_label.pack(pady=6)
 
-player_frame = tk.Frame(main_frame, bg="#000000")
+player_frame = tk.Frame(main_frame)
 player_frame.pack(pady=2)
 
-tk.Label(player_frame, text="Players:", fg="white", bg="#000000").pack(side="left")
+tk.Label(player_frame, text="Players:", fg="white").pack(side="left")
 player_count = tk.IntVar(value=2)
-tk.OptionMenu(player_frame, player_count, *range(2, 9)).pack(side="left", padx=6)
+tk.OptionMenu(player_frame, player_count, *range(2,9)).pack(side="left", padx=6)
 
-tk.Button(main_frame, text="🎲", font=font.Font(size=36), command=roll).pack(pady=4)
+tk.Button(main_frame, text="🎲", font=font.Font(size=36),
+          command=roll).pack(pady=4)
 tk.Button(main_frame, text="Reset", command=reset).pack(pady=4)
 
-grid_frame = tk.Frame(main_frame, bg="#000000")
+sealed_frame = tk.Frame(main_frame)
+sealed_frame.pack(pady=8)
+
+grid_frame = tk.Frame(main_frame)
 grid_frame.pack(pady=10)
 
 labels = []
 row = col = 0
 for name in arena_sets:
     lbl = tk.Label(grid_frame, text=name,
-                   fg="#9fb3c8", bg="#000000",
-                   font=list_font, cursor="hand2",
-                   anchor="w", padx=8)
+                   fg="#9fb3c8", font=list_font,
+                   cursor="hand2", anchor="w", padx=8)
     lbl.grid(row=row, column=col, sticky="w", pady=2)
-    lbl.bind("<Button-1>", lambda e, n=name, l=lbl: toggle(l, n))
+    lbl.bind("<Button-1>", lambda e,n=name,l=lbl: toggle(l,n))
     labels.append(lbl)
     col += 1
     if col >= 3:
