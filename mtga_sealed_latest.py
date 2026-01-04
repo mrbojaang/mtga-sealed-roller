@@ -3,38 +3,41 @@ import tkinter as tk
 from tkinter import font
 
 arena_sets = [
-    "Pioneer Masters",
-    "Foundations",
-    "Duskmourn: House of Horror",
-    "Bloomburrow",
-    "Modern Horizons 3",
-    "Outlaws of Thunder Junction",
-    "Murders at Karlov Manor",
-    "The Lost Caverns of Ixalan",
     "Wilds of Eldraine",
+    "The Lost Caverns of Ixalan",
+    "Murders at Karlov Manor",
+    "Outlaws of Thunder Junction",
+    "Bloomburrow",
+    "Duskmourn: House of Horror",
+
     "March of the Machine",
     "Phyrexia: All Will Be One",
-    "The Brothers' War",
+    "The Brothers’ War",
     "Dominaria United",
-    "Alchemy Horizons: Baldur's Gate",
     "Streets of New Capenna",
     "Kamigawa: Neon Dynasty",
-    "Innistrad: Crimson Vow",
     "Innistrad: Midnight Hunt",
-    "D&D: Adventures in the Forgotten Realms",
-    "Strixhaven: School of Mages",
-    "Kaldheim",
+    "Innistrad: Crimson Vow",
     "Zendikar Rising",
-    "Core Set 2021",
+    "Kaldheim",
+    "Strixhaven: School of Mages",
+    "Adventures in the Forgotten Realms",
     "Ikoria: Lair of Behemoths",
     "Theros Beyond Death",
+    "Core Set 2021",
+
+    "Pioneer Masters",
+    "Khans of Tarkir",
+    "Ravnica Remastered",
+    "Dominaria Remastered",
+    "Innistrad Remastered",
+    "Shadows over Innistrad Remastered",
     "Amonkhet Remastered",
     "Kaladesh Remastered",
-    "Shadows Over Innistrad Remastered",
-    "Ravnica Remastered",
-    "Khans of Tarkir",
 
-    # Nya set
+    "Modern Horizons 3",
+
+    "Lord of the Rings: Tales of Middle-earth",
     "Final Fantasy",
     "Avatar: The Last Airbender",
 ]
@@ -84,7 +87,7 @@ tk.Label(
     fg="#f5d76e",
     bg="#0b1a23",
     font=title_font
-).pack(pady=16)
+).pack(pady=14)
 
 result = tk.Label(
     root,
@@ -93,7 +96,7 @@ result = tk.Label(
     bg="#0b1a23",
     font=result_font
 )
-result.pack(pady=14)
+result.pack(pady=10)
 
 tk.Button(
     root,
@@ -108,9 +111,9 @@ tk.Button(
     command=reset
 ).pack(pady=6)
 
-# Scrollbar + kompakt lista
+# Scrollbar + kompakt vertikal lista
 frame = tk.Frame(root, bg="#0b1a23")
-frame.pack(fill="both", expand=True, padx=20, pady=10)
+frame.pack(fill="both", expand=True, padx=20, pady=8)
 
 canvas = tk.Canvas(frame, bg="#0b1a23", highlightthickness=0)
 scroll = tk.Scrollbar(frame, orient="vertical", command=canvas.yview)
@@ -137,7 +140,7 @@ for s in arena_sets:
         font=list_font,
         cursor="hand2"
     )
-    lbl.pack(anchor="w", pady=1)  # 👈 kompakt spacing
+    lbl.pack(anchor="w", pady=0)  # 👈 ingen extra vertikal spacing
     lbl.bind("<Button-1>", lambda e, n=s, l=lbl: toggle(l, n))
     labels.append(lbl)
 
