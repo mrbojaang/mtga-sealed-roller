@@ -243,23 +243,33 @@ class SealedTournament:
                 self.medals[winner] = "🥉"
         self.draw_playoff_scoreboard()
 
-    def draw_playoff_scoreboard(self):
-        for w in self.playoff_frame.winfo_children():
-            w.destroy()
+   def draw_group_scoreboard(self):
+    # Rensa scoreboard helt
+    for w in self.score_frame.winfo_children():
+        w.destroy()
 
-        tk.Label(self.playoff_frame, text="PLAYOFF SCOREBOARD",
-                 fg="#f5d76e", bg=BG).pack()
+    tk.Label(
+        self.score_frame,
+        text="GROUP SCOREBOARD",
+        fg="#f5d76e",
+        bg=BG,
+        font=self.header_font
+    ).pack()
 
-        for p in sorted(self.playoff_scores,
-                        key=lambda x: MEDAL_ORDER.get(self.medals.get(x, ""), 3)):
-            medal = self.medals.get(p, "")
-            tk.Label(
-                self.playoff_frame,
-                text=f"{medal} {p}",
-                fg=MEDAL_COLOR[medal],
-                bg=BG,
-                font=self.medal_font if medal else self.text_font
-            ).pack(anchor="w")
+    totals = {
+        p: sum(r.get(p, 0) for r in self.round_results.values())
+        for p in self.players
+    }
+
+    for p, pts in sorted(totals.items(), key=lambda x: x[1], reverse=True):
+        tk.Label(
+            self.score_frame,
+            text=f"{p}: {pts}",
+            fg="white",
+            bg=BG,
+            font=self.text_font
+        ).pack(anchor="w")
+
 
 
 # ---------- RUN ----------
