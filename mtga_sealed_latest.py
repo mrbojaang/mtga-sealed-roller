@@ -2,7 +2,11 @@ import random
 import tkinter as tk
 from tkinter import font
 import webbrowser
-from PIL import Image, ImageTk   # <-- kräver pillow
+from PIL import Image, ImageTk
+import os
+
+WINDOW_W = 740
+WINDOW_H = 760
 
 # ================= SET LIST =================
 
@@ -42,6 +46,32 @@ arena_sets = {
     "Final Fantasy": "FF",
     "Avatar: The Last Airbender": "ATLA",
 }
+
+# ================= HELPERS =================
+
+def load_background(path, w, h):
+    """Load image, scale proportionally and center-crop to window size."""
+    img = Image.open(path)
+    img_ratio = img.width / img.height
+    target_ratio = w / h
+
+    if img_ratio > target_ratio:
+        # Image is wider → fit height, crop width
+        new_height = h
+        new_width = int(h * img_ratio)
+    else:
+        # Image is taller → fit width, crop height
+        new_width = w
+        new_height = int(w / img_ratio)
+
+    img = img.resize((new_width, new_height), Image.LANCZOS)
+
+    left = (new_width - w) // 2
+    top = (new_height - h) // 2
+    right = left + w
+    bottom = top + h
+
+    return img.crop((left, top, right, bottom))
 
 # ================= STATE =================
 
@@ -107,42 +137,35 @@ def reset():
 
 root = tk.Tk()
 root.title("MTG Arena – Sealed")
-root.geometry("740x760")
+root.geometry(f"{WINDOW_W}x{WINDOW_H}")
 root.resizable(False, False)
 
-# --- BACKGROUND ---
-bg_image = Image.open("background.png").resize((740, 760))
-bg_photo = ImageTk.PhotoImage(bg_image)
+# --- BACKGROUND SAFE LOAD ---
+if os.path.exists("background.jpg"):
+    bg_img = load_background("background.jpg", WINDOW_W, WINDOW_H)
+    bg_photo = ImageTk.PhotoImage(bg_img)
+    bg_label = tk.Label(root, image=bg_photo)
+    bg_label.place(x=0, y=0)
+else:
+    root.configure(bg="#0b1a23")
 
-bg_label = tk.Label(root, image=bg_photo)
-bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-
-# --- CONTENT FRAME (transparent feeling) ---
-main_frame = tk.Frame(root, bg="#000000", highlightthickness=0)
+# --- CONTENT FRAME ---
+main_frame = tk.Frame(root, bg="#000000")
 main_frame.place(relwidth=1, relheight=1)
 
 title_font = font.Font(size=24, weight="bold")
 result_font = font.Font(size=20, weight="bold")
 list_font = font.Font(size=10)
 
-tk.Label(
-    main_frame,
-    text="MTG ARENA – SEALED",
-    fg="#f5d76e",
-    bg="#000000",
-    font=title_font
-).pack(pady=10)
+tk.Label(main_frame, text="MTG ARENA – SEALED",
+         fg="#f5d76e", bg="#000000",
+         font=title_font).pack(pady=10)
 
-result_label = tk.Label(
-    main_frame,
-    text="ROLL",
-    fg="white",
-    bg="#000000",
-    font=result_font
-)
+result_label = tk.Label(main_frame, text="ROLL",
+                        fg="white", bg="#000000",
+                        font=result_font)
 result_label.pack(pady=6)
 
-# Players
 player_frame = tk.Frame(main_frame, bg="#000000")
 player_frame.pack(pady=2)
 
@@ -153,7 +176,6 @@ tk.OptionMenu(player_frame, player_count, *range(2, 9)).pack(side="left", padx=6
 tk.Button(main_frame, text="🎲", font=font.Font(size=36), command=roll).pack(pady=4)
 tk.Button(main_frame, text="Reset", command=reset).pack(pady=4)
 
-# --- SET GRID ---
 grid_frame = tk.Frame(main_frame, bg="#000000")
 grid_frame.pack(pady=10)
 
@@ -162,16 +184,10 @@ columns = 3
 row = col = 0
 
 for name in arena_sets:
-    lbl = tk.Label(
-        grid_frame,
-        text=name,
-        fg="#9fb3c8",
-        bg="#000000",
-        font=list_font,
-        cursor="hand2",
-        anchor="w",
-        padx=8
-    )
+    lbl = tk.Label(grid_frame, text=name,
+                   fg="#9fb3c8", bg="#000000",
+                   font=list_font, cursor="hand2",
+                   anchor="w", padx=8)
     lbl.grid(row=row, column=col, sticky="w", pady=2)
     lbl.bind("<Button-1>", lambda e, n=name, l=lbl: toggle(l, n))
     labels.append(lbl)
