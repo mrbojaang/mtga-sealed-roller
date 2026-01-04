@@ -4,6 +4,20 @@ from tkinter import font
 import webbrowser
 
 arena_sets = {
+    # Core / Standard / Premier
+    "Core Set 2021": "M21",
+    "Zendikar Rising": "ZNR",
+    "Kaldheim": "KHM",
+    "Strixhaven: School of Mages": "STX",
+    "Adventures in the Forgotten Realms": "AFR",
+    "Innistrad: Midnight Hunt": "MID",
+    "Innistrad: Crimson Vow": "VOW",
+    "Kamigawa: Neon Dynasty": "NEO",
+    "Streets of New Capenna": "SNC",
+    "Dominaria United": "DMU",
+    "The Brothers’ War": "BRO",
+    "Phyrexia: All Will Be One": "ONE",
+    "March of the Machine": "MOM",
     "Wilds of Eldraine": "WOE",
     "The Lost Caverns of Ixalan": "LCI",
     "Murders at Karlov Manor": "MKM",
@@ -11,33 +25,20 @@ arena_sets = {
     "Bloomburrow": "BLB",
     "Duskmourn: House of Horror": "DSK",
 
-    "March of the Machine": "MOM",
-    "Phyrexia: All Will Be One": "ONE",
-    "The Brothers’ War": "BRO",
-    "Dominaria United": "DMU",
-    "Streets of New Capenna": "SNC",
-    "Kamigawa: Neon Dynasty": "NEO",
-    "Innistrad: Midnight Hunt": "MID",
-    "Innistrad: Crimson Vow": "VOW",
-    "Zendikar Rising": "ZNR",
-    "Kaldheim": "KHM",
-    "Strixhaven: School of Mages": "STX",
-    "Adventures in the Forgotten Realms": "AFR",
-    "Ikoria: Lair of Behemoths": "IKO",
-    "Theros Beyond Death": "THB",
-    "Core Set 2021": "M21",
-
+    # Masters / Remastered / Explorer
+    "Amonkhet Remastered": "AKR",
+    "Kaladesh Remastered": "KLR",
     "Pioneer Masters": "PM",
-    "Khans of Tarkir": "KTK",
+    "Shadows over Innistrad Remastered": "SIR",
     "Ravnica Remastered": "RVR",
     "Dominaria Remastered": "DMR",
     "Innistrad Remastered": "INR",
-    "Shadows over Innistrad Remastered": "SIR",
-    "Amonkhet Remastered": "AKR",
-    "Kaladesh Remastered": "KLR",
+    "Khans of Tarkir": "KTK",
 
+    # Modern / Special
     "Modern Horizons 3": "MH3",
 
+    # Universes Beyond
     "Lord of the Rings: Tales of Middle-earth": "LTR",
     "Final Fantasy": "FF",
     "Avatar: The Last Airbender": "ATLA",
@@ -45,7 +46,9 @@ arena_sets = {
 
 excluded = set()
 reset_clicks = 0
-sealed_urls = []
+sealed_buttons = []
+
+number_names = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"]
 
 def toggle(lbl, name):
     if name in excluded:
@@ -55,8 +58,13 @@ def toggle(lbl, name):
         excluded.add(name)
         lbl.config(fg="#ff5252")
 
+def clear_sealed_buttons():
+    for b in sealed_buttons:
+        b.destroy()
+    sealed_buttons.clear()
+
 def roll():
-    global reset_clicks, sealed_urls
+    global reset_clicks
     reset_clicks = 0
     clear_sealed_buttons()
 
@@ -70,24 +78,16 @@ def roll():
 
     code = arena_sets[chosen]
     players = player_count.get()
-    sealed_urls = [
-        f"https://draftsim.com/draft.php?mode=Sealed_{code}"
-        for _ in range(players)
-    ]
 
     for i in range(players):
+        url = f"https://draftsim.com/draft.php?mode=Sealed_{code}"
         btn = tk.Button(
             sealed_frame,
             text=f"Sealed {number_names[i]}",
-            command=lambda url=sealed_urls[i]: webbrowser.open(url)
+            command=lambda u=url: webbrowser.open(u)
         )
         btn.pack(pady=2)
         sealed_buttons.append(btn)
-
-def clear_sealed_buttons():
-    for b in sealed_buttons:
-        b.destroy()
-    sealed_buttons.clear()
 
 def reset():
     global reset_clicks
@@ -127,8 +127,7 @@ tk.Label(player_frame, text="Players:",
          fg="white", bg="#0b1a23").pack(side="left")
 
 player_count = tk.IntVar(value=2)
-player_menu = tk.OptionMenu(player_frame, player_count, *range(2, 9))
-player_menu.pack(side="left", padx=6)
+tk.OptionMenu(player_frame, player_count, *range(2, 9)).pack(side="left", padx=6)
 
 tk.Button(root, text="🎲",
           font=font.Font(size=36),
@@ -140,10 +139,7 @@ tk.Button(root, text="Reset",
 sealed_frame = tk.Frame(root, bg="#0b1a23")
 sealed_frame.pack(pady=6)
 
-sealed_buttons = []
-number_names = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"]
-
-# --- Set list (centered, compact) ---
+# --- Centered compact list ---
 outer = tk.Frame(root, bg="#0b1a23")
 outer.pack(fill="both", expand=True)
 
