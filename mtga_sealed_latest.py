@@ -159,4 +159,19 @@ class SealedTournament:
                  fg="white", bg="#0b1026").pack()
 
         totals = {p: 0 for p in self.players}
-        for r, data in self.round
+        for r, data in self.round_results.items():
+            for p, pts in data.items():
+                totals[p] += pts
+
+        for p in self.players:
+            line = f"{p:7} "
+            for r in range(1, self.current_round + 1):
+                line += f"{self.round_results[r].get(p,0):3} "
+            line += f"{totals[p]:5}"
+            tk.Label(self.score_frame, text=line,
+                     fg="white", bg="#0b1026").pack(anchor="w")
+
+# ---------------- RUN ----------------
+root = tk.Tk()
+app = SealedTournament(root)
+root.mainloop()
