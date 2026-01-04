@@ -9,27 +9,28 @@ class SealedTournament:
     def __init__(self, root):
         self.root = root
         self.root.title("MTG Sealed Tournament")
-        self.root.geometry("860x760")
+        self.root.geometry("900x780")
         self.root.configure(bg="#0b1026")
 
         self.players = []
         self.scores = {}
         self.best_of = tk.IntVar(value=3)
+        self.max_rounds = tk.IntVar(value=3)
 
-        self.history = []              # undo stack
+        self.current_round = 0
+        self.history = []
+
         self.semifinal_winners = []
-        self.finalists = []
 
         self.build_ui()
 
     # ---------------- UI ----------------
     def build_ui(self):
-        title = tk.Label(
+        tk.Label(
             self.root, text="MTG SEALED TOURNAMENT",
             fg="#f5d76e", bg="#0b1026",
             font=font.Font(size=22, weight="bold")
-        )
-        title.pack(pady=10)
+        ).pack(pady=10)
 
         setup = tk.Frame(self.root, bg="#0b1026")
         setup.pack()
@@ -37,10 +38,13 @@ class SealedTournament:
         tk.Label(setup, text="Best of:", fg="white", bg="#0b1026").grid(row=0, column=0)
         tk.OptionMenu(setup, self.best_of, 1, 3, 5, 7).grid(row=0, column=1)
 
+        tk.Label(setup, text="Group rounds:", fg="white", bg="#0b1026").grid(row=0, column=2)
+        tk.OptionMenu(setup, self.max_rounds, 1, 2, 3, 4, 5, 6, 7).grid(row=0, column=3)
+
         self.entries = []
         for i in range(MAX_PLAYERS):
             e = tk.Entry(setup, width=20)
-            e.grid(row=i+1, column=0, columnspan=2, pady=2)
+            e.grid(row=i+1, column=0, columnspan=4, pady=2)
             self.entries.append(e)
 
         tk.Button(self.root, text="Start Group Stage",
@@ -61,6 +65,11 @@ class SealedTournament:
         )
         self.standings.pack(pady=10)
 
+        self.next_round_btn = tk.Button(
+            self.root, text="Next Round",
+            command=self.next_round
+        )
+
         self.playoff_btn = tk.Button(
             self.root, text="Start Playoffs",
             command=self.start_playoffs
@@ -74,11 +83,16 @@ class SealedTournament:
 
         self.scores = {p: 0 for p in self.players}
         self.history.clear()
-        self.generate_matches()
+        self.current_round = 1
+        self.show_round()
 
-    def generate_matches(self):
+    def show_round(self):
         for w in self.match_frame.winfo_children():
             w.destroy()
+
+        self.info.config(
+            text=f"GROUP STAGE – ROUND {self.current_round}/{self.max_rounds.get()}"
+        )
 
         temp = self.players.copy()
         while len(temp) >= 2:
@@ -86,13 +100,26 @@ class SealedTournament:
             b = temp.pop(0)
             self.match_row(a, b)
 
+        self.update_standings()
+        self.next_round_btn.pack(pady=6)
+
+    def next_round(self):
+        if self.current_round < self.max_rounds.get():
+            self.current_round += 1
+            self.players = self.players[1:] + self.players[:1]  # rotate for variety
+            self.show_round()
+        else:
+            self.next_round_btn.pack_forget()
+            if len(self.players) >= 4:
+                self.playoff_btn.pack(pady=10)
+
     def match_row(self, a, b):
         row = tk.Frame(self.match_frame, bg="#0b1026")
         row.pack(pady=4)
 
         tk.Label(
             row, text=f"{a} vs {b} (Bo{self.best_of.get()})",
-            fg="white", bg="#0b1026", width=32
+            fg="white", bg="#0b1026", width=34
         ).pack(side="left")
 
         tk.Button(row, text=a,
@@ -139,19 +166,14 @@ class SealedTournament:
             text += f"{i}. {p} – {s}p\n"
         self.standings.config(text=text)
 
-        if len(self.players) >= 4:
-            self.playoff_btn.pack(pady=8)
-
     # ---------------- PLAYOFFS ----------------
     def start_playoffs(self):
         for w in self.match_frame.winfo_children():
             w.destroy()
 
         self.semifinal_winners.clear()
-        self.finalists.clear()
 
         top4 = sorted(self.scores, key=self.scores.get, reverse=True)[:4]
-
         self.info.config(text="PLAYOFFS – SEMIFINALS")
 
         self.playoff_match(top4[0], top4[3])
@@ -162,7 +184,7 @@ class SealedTournament:
         row.pack(pady=6)
 
         tk.Label(row, text=f"{a} vs {b}",
-                 fg="white", bg="#0b1026", width=28).pack(side="left")
+                 fg="white", bg="#0b1026", width=30).pack(side="left")
 
         tk.Button(row, text=a,
                   command=lambda: self.semifinal_win(a)).pack(side="left", padx=4)
@@ -189,7 +211,7 @@ class SealedTournament:
         row.pack(pady=10)
 
         tk.Label(row, text=f"{a} vs {b}",
-                 fg="white", bg="#0b1026", width=30).pack(side="left")
+                 fg="white", bg="#0b1026", width=32).pack(side="left")
 
         tk.Button(row, text=a,
                   command=lambda: self.champion(a)).pack(side="left", padx=6)
