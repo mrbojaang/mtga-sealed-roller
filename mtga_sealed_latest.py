@@ -17,7 +17,7 @@ class SealedTournament:
         self.max_rounds = tk.IntVar(value=3)
 
         self.current_round = 0
-        self.round_results = {}   # round -> {player: points}
+        self.round_results = {}
 
         self.build_ui()
 
@@ -149,27 +149,34 @@ class SealedTournament:
             self.score_frame, text="ROUND SCORES",
             fg="#f5d76e", bg="#0b1026",
             font=font.Font(size=14, weight="bold")
-        ).pack(pady=4)
+        ).grid(row=0, column=0, columnspan=10, pady=4)
 
-        header = "Player  "
+        tk.Label(self.score_frame, text="Player",
+                 fg="white", bg="#0b1026").grid(row=1, column=0, sticky="w")
+
         for r in range(1, self.current_round + 1):
-            header += f" R{r} "
-        header += " Total"
-        tk.Label(self.score_frame, text=header,
-                 fg="white", bg="#0b1026").pack()
+            tk.Label(self.score_frame, text=f"R{r}",
+                     fg="white", bg="#0b1026").grid(row=1, column=r)
+
+        tk.Label(self.score_frame, text="Total",
+                 fg="white", bg="#0b1026").grid(row=1, column=self.current_round + 1)
 
         totals = {p: 0 for p in self.players}
         for r, data in self.round_results.items():
             for p, pts in data.items():
                 totals[p] += pts
 
-        for p in self.players:
-            line = f"{p:7} "
+        for i, p in enumerate(self.players, start=2):
+            tk.Label(self.score_frame, text=p,
+                     fg="white", bg="#0b1026").grid(row=i, column=0, sticky="w")
+
             for r in range(1, self.current_round + 1):
-                line += f"{self.round_results[r].get(p,0):3} "
-            line += f"{totals[p]:5}"
-            tk.Label(self.score_frame, text=line,
-                     fg="white", bg="#0b1026").pack(anchor="w")
+                val = self.round_results.get(r, {}).get(p, 0)
+                tk.Label(self.score_frame, text=str(val),
+                         fg="white", bg="#0b1026").grid(row=i, column=r)
+
+            tk.Label(self.score_frame, text=str(totals[p]),
+                     fg="white", bg="#0b1026").grid(row=i, column=self.current_round + 1)
 
 # ---------------- RUN ----------------
 root = tk.Tk()
