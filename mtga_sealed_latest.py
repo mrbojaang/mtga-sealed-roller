@@ -10,11 +10,12 @@ class SealedTournament:
     def __init__(self, root):
         self.root = root
         self.root.title("MTG Sealed Tournament")
-        self.root.geometry("1150x800")
+        self.root.geometry("1250x820")
         self.root.configure(bg=BG)
 
         self.players = []
-        self.best_of = tk.IntVar(value=3)
+        self.best_of_group = tk.IntVar(value=3)
+        self.best_of_playoff = tk.IntVar(value=3)
         self.max_rounds = tk.IntVar(value=3)
 
         self.current_round = 0
@@ -37,20 +38,25 @@ class SealedTournament:
         setup = tk.Frame(self.root, bg=BG)
         setup.pack()
 
-        tk.Label(setup, text="Best of:", fg="white", bg=BG, font=self.text_font)\
-            .grid(row=0, column=0, padx=4)
-        tk.OptionMenu(setup, self.best_of, 1, 3, 5, 7)\
+        tk.Label(setup, text="Best of (Group):", fg="white", bg=BG,
+                 font=self.text_font).grid(row=0, column=0, padx=4)
+        tk.OptionMenu(setup, self.best_of_group, 1, 3, 5, 7)\
             .grid(row=0, column=1, padx=4)
 
-        tk.Label(setup, text="Group rounds:", fg="white", bg=BG, font=self.text_font)\
-            .grid(row=0, column=2, padx=4)
+        tk.Label(setup, text="Group rounds:", fg="white", bg=BG,
+                 font=self.text_font).grid(row=0, column=2, padx=4)
         tk.OptionMenu(setup, self.max_rounds, 1, 2, 3, 4, 5, 6, 7)\
             .grid(row=0, column=3, padx=4)
+
+        tk.Label(setup, text="Best of (Playoffs):", fg="white", bg=BG,
+                 font=self.text_font).grid(row=0, column=4, padx=4)
+        tk.OptionMenu(setup, self.best_of_playoff, 1, 3, 5, 7)\
+            .grid(row=0, column=5, padx=4)
 
         self.entries = []
         for i in range(MAX_PLAYERS):
             e = tk.Entry(setup, width=22, font=self.text_font)
-            e.grid(row=i+1, column=0, columnspan=4, pady=3)
+            e.grid(row=i+1, column=0, columnspan=6, pady=3)
             self.entries.append(e)
 
         tk.Button(self.root, text="Start Group Stage",
@@ -103,7 +109,8 @@ class SealedTournament:
             w.destroy()
 
         self.info.config(
-            text=f"GROUP STAGE – ROUND {self.current_round}/{self.max_rounds.get()}"
+            text=f"GROUP STAGE – ROUND {self.current_round}/{self.max_rounds.get()}  "
+                 f"(Bo{self.best_of_group.get()})"
         )
 
         temp = self.players.copy()
@@ -119,8 +126,8 @@ class SealedTournament:
         row.pack(pady=6)
 
         tk.Label(
-            row, text=f"{a} vs {b} (Bo{self.best_of.get()})",
-            fg="white", bg=BG, width=30, font=self.text_font
+            row, text=f"{a} vs {b}",
+            fg="white", bg=BG, width=28, font=self.text_font
         ).pack(side="left")
 
         tk.Button(row, text=a, font=self.text_font,
@@ -167,7 +174,7 @@ class SealedTournament:
         for w in self.score_frame.winfo_children():
             w.destroy()
 
-        tk.Label(self.score_frame, text="SCOREBOARD",
+        tk.Label(self.score_frame, text="GROUP SCOREBOARD",
                  fg="#f5d76e", bg=BG,
                  font=self.header_font).grid(row=0, column=0, columnspan=10, pady=6)
 
@@ -205,7 +212,10 @@ class SealedTournament:
     # ---------------- PLAYOFFS ----------------
     def start_playoffs(self):
         self.playoffs_started = True
+
         for w in self.match_frame.winfo_children():
+            w.destroy()
+        for w in self.score_frame.winfo_children():
             w.destroy()
 
         totals = {p: 0 for p in self.players}
@@ -213,12 +223,25 @@ class SealedTournament:
             for p, pts in r.items():
                 totals[p] += pts
 
-        ranked = [p for p, _ in sorted(totals.items(), key=lambda x: x[1], reverse=True)]
+        ranked = sorted(totals.items(), key=lambda x: x[1], reverse=True)
 
-        self.info.config(text="PLAYOFFS")
+        # Playoff scoreboard (center)
+        tk.Label(self.score_frame, text="PLAYOFF STANDINGS",
+                 fg="#f5d76e", bg=BG,
+                 font=self.header_font).pack(pady=6)
 
-        self.playoff_match("FINAL", ranked[0], ranked[1])
-        self.playoff_match("3RD PLACE", ranked[2], ranked[3])
+        for i, (p, pts) in enumerate(ranked[:4], start=1):
+            tk.Label(self.score_frame,
+                     text=f"#{i} {p} – {pts}p",
+                     fg="white", bg=BG,
+                     font=self.text_font).pack(anchor="w")
+
+        self.info.config(
+            text=f"PLAYOFFS – Best of {self.best_of_playoff.get()}"
+        )
+
+        self.playoff_match("FINAL", ranked[0][0], ranked[1][0])
+        self.playoff_match("3RD PLACE", ranked[2][0], ranked[3][0])
 
     def playoff_match(self, title, a, b):
         tk.Label(self.match_frame, text=title,
