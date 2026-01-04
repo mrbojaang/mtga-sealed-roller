@@ -2,13 +2,10 @@ import random
 import tkinter as tk
 from tkinter import font
 import webbrowser
-from PIL import Image, ImageTk
 import os
 
 WINDOW_W = 740
 WINDOW_H = 760
-
-# ================= SET LIST =================
 
 arena_sets = {
     "Core Set 2021": "M21",
@@ -30,7 +27,6 @@ arena_sets = {
     "Outlaws of Thunder Junction": "OTJ",
     "Bloomburrow": "BLB",
     "Duskmourn: House of Horror": "DSK",
-
     "Amonkhet Remastered": "AKR",
     "Kaladesh Remastered": "KLR",
     "Pioneer Masters": "PM",
@@ -39,48 +35,16 @@ arena_sets = {
     "Dominaria Remastered": "DMR",
     "Innistrad Remastered": "INR",
     "Khans of Tarkir": "KTK",
-
     "Modern Horizons 3": "MH3",
-
     "Lord of the Rings: Tales of Middle-earth": "LTR",
     "Final Fantasy": "FF",
     "Avatar: The Last Airbender": "ATLA",
 }
 
-# ================= HELPERS =================
-
-def load_background(path, w, h):
-    """Load image, scale proportionally and center-crop to window size."""
-    img = Image.open(path)
-    img_ratio = img.width / img.height
-    target_ratio = w / h
-
-    if img_ratio > target_ratio:
-        # Image is wider → fit height, crop width
-        new_height = h
-        new_width = int(h * img_ratio)
-    else:
-        # Image is taller → fit width, crop height
-        new_width = w
-        new_height = int(w / img_ratio)
-
-    img = img.resize((new_width, new_height), Image.LANCZOS)
-
-    left = (new_width - w) // 2
-    top = (new_height - h) // 2
-    right = left + w
-    bottom = top + h
-
-    return img.crop((left, top, right, bottom))
-
-# ================= STATE =================
-
 excluded = set()
 reset_clicks = 0
 sealed_buttons = []
 number_names = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"]
-
-# ================= LOGIC =================
 
 def toggle(label, name):
     if name in excluded:
@@ -100,24 +64,19 @@ def roll():
     reset_clicks = 0
     clear_sealed_buttons()
 
-    available = [s for s in arena_sets if s not in excluded]
-    if not available:
+    pool = [s for s in arena_sets if s not in excluded]
+    if not pool:
         result_label.config(text="No sets available")
         return
 
-    chosen = random.choice(available)
+    chosen = random.choice(pool)
     result_label.config(text=chosen)
 
     code = arena_sets[chosen]
-    players = player_count.get()
-
-    for i in range(players):
+    for i in range(player_count.get()):
         url = f"https://draftsim.com/draft.php?mode=Sealed_{code}"
-        btn = tk.Button(
-            main_frame,
-            text=f"Sealed {number_names[i]}",
-            command=lambda u=url: webbrowser.open(u)
-        )
+        btn = tk.Button(main_frame, text=f"Sealed {number_names[i]}",
+                        command=lambda u=url: webbrowser.open(u))
         btn.pack(pady=2)
         sealed_buttons.append(btn)
 
@@ -126,30 +85,25 @@ def reset():
     reset_clicks += 1
     result_label.config(text="ROLL")
     clear_sealed_buttons()
-
     if reset_clicks >= 2:
         excluded.clear()
-        for lbl in labels:
-            lbl.config(fg="#9fb3c8")
+        for l in labels:
+            l.config(fg="#9fb3c8")
         reset_clicks = 0
-
-# ================= UI =================
 
 root = tk.Tk()
 root.title("MTG Arena – Sealed")
 root.geometry(f"{WINDOW_W}x{WINDOW_H}")
 root.resizable(False, False)
 
-# --- BACKGROUND SAFE LOAD ---
-if os.path.exists("background.jpg"):
-    bg_img = load_background("background.jpg", WINDOW_W, WINDOW_H)
-    bg_photo = ImageTk.PhotoImage(bg_img)
-    bg_label = tk.Label(root, image=bg_photo)
-    bg_label.place(x=0, y=0)
+# BACKGROUND (SAFE)
+if os.path.exists("background.png"):
+    bg_img = tk.PhotoImage(file="background.png")
+    bg_label = tk.Label(root, image=bg_img)
+    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
 else:
     root.configure(bg="#0b1a23")
 
-# --- CONTENT FRAME ---
 main_frame = tk.Frame(root, bg="#000000")
 main_frame.place(relwidth=1, relheight=1)
 
@@ -180,9 +134,7 @@ grid_frame = tk.Frame(main_frame, bg="#000000")
 grid_frame.pack(pady=10)
 
 labels = []
-columns = 3
 row = col = 0
-
 for name in arena_sets:
     lbl = tk.Label(grid_frame, text=name,
                    fg="#9fb3c8", bg="#000000",
@@ -191,9 +143,8 @@ for name in arena_sets:
     lbl.grid(row=row, column=col, sticky="w", pady=2)
     lbl.bind("<Button-1>", lambda e, n=name, l=lbl: toggle(l, n))
     labels.append(lbl)
-
     col += 1
-    if col >= columns:
+    if col >= 3:
         col = 0
         row += 1
 
