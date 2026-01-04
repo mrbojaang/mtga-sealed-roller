@@ -23,8 +23,11 @@ class SealedTournament:
 
         self.current_round = 0
         self.round_results = {}
-        self.playoff_scores = {}
+
         self.in_playoffs = False
+        self.playoff_scores = {}
+        self.playoff_matches = {}   # match_name -> (a, b)
+        self.medals = {}            # player -> 🥇🥈🥉
 
         self.undo_stack = []
 
@@ -124,8 +127,9 @@ class SealedTournament:
             "players": self.players[:],
             "current_round": self.current_round,
             "round_results": copy.deepcopy(self.round_results),
+            "in_playoffs": self.in_playoffs,
             "playoff_scores": copy.deepcopy(self.playoff_scores),
-            "in_playoffs": self.in_playoffs
+            "medals": copy.deepcopy(self.medals)
         })
 
     def undo(self):
@@ -136,8 +140,9 @@ class SealedTournament:
         self.players = state["players"]
         self.current_round = state["current_round"]
         self.round_results = state["round_results"]
-        self.playoff_scores = state["playoff_scores"]
         self.in_playoffs = state["in_playoffs"]
+        self.playoff_scores = state["playoff_scores"]
+        self.medals = state["medals"]
 
         if self.in_playoffs:
             self.render_playoffs()
@@ -269,6 +274,7 @@ class SealedTournament:
     def start_playoffs(self):
         self.snapshot()
         self.in_playoffs = True
+        self.medals = {}
 
         for w in self.match_frame.winfo_children():
             w.destroy()
@@ -284,15 +290,24 @@ class SealedTournament:
         top4 = [p for p, _ in ranked[:4]]
 
         self.playoff_scores = {p: 0 for p in top4}
+        self.playoff_matches = {
+            "FINAL": (top4[0], top4[1]),
+            "3RD": (top4[2], top4[3])
+        }
 
         self.info.config(
             text=f"PLAYOFFS – Best of {self.best_of_playoff.get()}"
         )
 
         self.update_playoff_scoreboard()
+        self.render_playoffs()
 
-        self.playoff_match("FINAL", top4[0], top4[1])
-        self.playoff_match("3RD PLACE", top4[2], top4[3])
+    def render_playoffs(self):
+        for w in self.match_frame.winfo_children():
+            w.destroy()
+
+        self.playoff_match("FINAL", *self.playoff_matches["FINAL"])
+        self.playoff_match("3RD PLACE", *self.playoff_matches["3RD"])
 
     def update_playoff_scoreboard(self):
         for w in self.playoff_frame.winfo_children():
@@ -303,8 +318,9 @@ class SealedTournament:
                  font=self.header_font).pack(pady=6)
 
         for p, pts in self.playoff_scores.items():
+            medal = self.medals.get(p, "")
             tk.Label(self.playoff_frame,
-                     text=f"{p}: {pts}",
+                     text=f"{p}: {pts} {medal}",
                      fg="white", bg=BG,
                      font=self.text_font).pack(anchor="w")
 
@@ -321,13 +337,24 @@ class SealedTournament:
                  font=self.text_font).pack(side="left", padx=6)
 
         tk.Button(row, text=a, font=self.text_font,
-                  command=lambda: self.playoff_win(a)).pack(side="left", padx=4)
+                  command=lambda: self.playoff_win(title, a, b, a)).pack(side="left", padx=4)
         tk.Button(row, text=b, font=self.text_font,
-                  command=lambda: self.playoff_win(b)).pack(side="left", padx=4)
+                  command=lambda: self.playoff_win(title, a, b, b)).pack(side="left", padx=4)
 
-    def playoff_win(self, player):
+    def playoff_win(self, match_type, a, b, winner):
         self.snapshot()
-        self.playoff_scores[player] += 1
+        self.playoff_scores[winner] += 1
+
+        needed = self.best_of_playoff.get() // 2 + 1
+        if self.playoff_scores[winner] >= needed:
+            loser = b if winner == a else a
+
+            if match_type == "FINAL":
+                self.medals[winner] = "🥇"
+                self.medals[loser] = "🥈"
+            else:
+                self.medals[winner] = "🥉"
+
         self.update_playoff_scoreboard()
 
 
