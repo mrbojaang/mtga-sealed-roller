@@ -9,18 +9,15 @@ class SealedTournament:
     def __init__(self, root):
         self.root = root
         self.root.title("MTG Sealed Tournament")
-        self.root.geometry("900x780")
+        self.root.geometry("1100x780")
         self.root.configure(bg="#0b1026")
 
         self.players = []
-        self.scores = {}
         self.best_of = tk.IntVar(value=3)
         self.max_rounds = tk.IntVar(value=3)
 
         self.current_round = 0
-        self.history = []
-
-        self.semifinal_winners = []
+        self.round_results = {}   # round -> {player: points}
 
         self.build_ui()
 
@@ -50,30 +47,25 @@ class SealedTournament:
         tk.Button(self.root, text="Start Group Stage",
                   command=self.start_group).pack(pady=8)
 
-        tk.Button(self.root, text="Undo Last Result",
-                  command=self.undo).pack(pady=4)
-
         self.info = tk.Label(self.root, text="", fg="white", bg="#0b1026")
         self.info.pack()
 
-        self.match_frame = tk.Frame(self.root, bg="#0b1026")
-        self.match_frame.pack(pady=8)
+        main = tk.Frame(self.root, bg="#0b1026")
+        main.pack(fill="both", expand=True)
 
-        self.standings = tk.Label(
-            self.root, text="", fg="white",
-            bg="#0b1026", justify="left"
-        )
-        self.standings.pack(pady=10)
+        self.match_frame = tk.Frame(main, bg="#0b1026")
+        self.match_frame.pack(side="left", padx=20)
 
-        self.next_round_btn = tk.Button(
-            self.root, text="Next Round",
-            command=self.next_round
-        )
+        self.score_frame = tk.Frame(main, bg="#0b1026")
+        self.score_frame.pack(side="right", padx=20)
 
-        self.playoff_btn = tk.Button(
-            self.root, text="Start Playoffs",
-            command=self.start_playoffs
-        )
+        nav = tk.Frame(self.root, bg="#0b1026")
+        nav.pack(pady=6)
+
+        tk.Button(nav, text="◀ Previous Round",
+                  command=self.prev_round).pack(side="left", padx=6)
+        tk.Button(nav, text="Next Round ▶",
+                  command=self.next_round).pack(side="left", padx=6)
 
     # ---------------- GROUP STAGE ----------------
     def start_group(self):
@@ -81,9 +73,8 @@ class SealedTournament:
         if len(self.players) < 2:
             return
 
-        self.scores = {p: 0 for p in self.players}
-        self.history.clear()
         self.current_round = 1
+        self.round_results = {1: {p: 0 for p in self.players}}
         self.show_round()
 
     def show_round(self):
@@ -100,18 +91,7 @@ class SealedTournament:
             b = temp.pop(0)
             self.match_row(a, b)
 
-        self.update_standings()
-        self.next_round_btn.pack(pady=6)
-
-    def next_round(self):
-        if self.current_round < self.max_rounds.get():
-            self.current_round += 1
-            self.players = self.players[1:] + self.players[:1]  # rotate for variety
-            self.show_round()
-        else:
-            self.next_round_btn.pack_forget()
-            if len(self.players) >= 4:
-                self.playoff_btn.pack(pady=10)
+        self.update_scoreboard()
 
     def match_row(self, a, b):
         row = tk.Frame(self.match_frame, bg="#0b1026")
@@ -119,7 +99,7 @@ class SealedTournament:
 
         tk.Label(
             row, text=f"{a} vs {b} (Bo{self.best_of.get()})",
-            fg="white", bg="#0b1026", width=34
+            fg="white", bg="#0b1026", width=32
         ).pack(side="left")
 
         tk.Button(row, text=a,
@@ -131,97 +111,52 @@ class SealedTournament:
 
     def result(self, a, b, res):
         if res == "A":
-            self.scores[a] += WIN
-            self.history.append((a, WIN))
+            self.round_results[self.current_round][a] += WIN
         elif res == "B":
-            self.scores[b] += WIN
-            self.history.append((b, WIN))
+            self.round_results[self.current_round][b] += WIN
         else:
-            self.scores[a] += DRAW
-            self.scores[b] += DRAW
-            self.history.append(("DRAW", (a, b)))
+            self.round_results[self.current_round][a] += DRAW
+            self.round_results[self.current_round][b] += DRAW
 
-        self.update_standings()
+        self.update_scoreboard()
 
-    def undo(self):
-        if not self.history:
+    # ---------------- ROUND NAVIGATION ----------------
+    def next_round(self):
+        if self.current_round >= self.max_rounds.get():
             return
 
-        last = self.history.pop()
-        if last[0] == "DRAW":
-            a, b = last[1]
-            self.scores[a] -= DRAW
-            self.scores[b] -= DRAW
-        else:
-            player, pts = last
-            self.scores[player] -= pts
+        self.current_round += 1
+        if self.current_round not in self.round_results:
+            self.round_results[self.current_round] = {p: 0 for p in self.players}
+            self.players = self.players[1:] + self.players[:1]
 
-        self.update_standings()
+        self.show_round()
 
-    def update_standings(self):
-        text = "STANDINGS\n"
-        for i, (p, s) in enumerate(
-            sorted(self.scores.items(), key=lambda x: x[1], reverse=True), 1
-        ):
-            text += f"{i}. {p} – {s}p\n"
-        self.standings.config(text=text)
-
-    # ---------------- PLAYOFFS ----------------
-    def start_playoffs(self):
-        for w in self.match_frame.winfo_children():
-            w.destroy()
-
-        self.semifinal_winners.clear()
-
-        top4 = sorted(self.scores, key=self.scores.get, reverse=True)[:4]
-        self.info.config(text="PLAYOFFS – SEMIFINALS")
-
-        self.playoff_match(top4[0], top4[3])
-        self.playoff_match(top4[1], top4[2])
-
-    def playoff_match(self, a, b):
-        row = tk.Frame(self.match_frame, bg="#0b1026")
-        row.pack(pady=6)
-
-        tk.Label(row, text=f"{a} vs {b}",
-                 fg="white", bg="#0b1026", width=30).pack(side="left")
-
-        tk.Button(row, text=a,
-                  command=lambda: self.semifinal_win(a)).pack(side="left", padx=4)
-        tk.Button(row, text=b,
-                  command=lambda: self.semifinal_win(b)).pack(side="left", padx=4)
-
-    def semifinal_win(self, winner):
-        if winner in self.semifinal_winners:
+    def prev_round(self):
+        if self.current_round <= 1:
             return
 
-        self.semifinal_winners.append(winner)
+        del self.round_results[self.current_round]
+        self.current_round -= 1
+        self.show_round()
 
-        if len(self.semifinal_winners) == 2:
-            self.show_final()
-
-    def show_final(self):
-        for w in self.match_frame.winfo_children():
+    # ---------------- SCOREBOARD ----------------
+    def update_scoreboard(self):
+        for w in self.score_frame.winfo_children():
             w.destroy()
 
-        a, b = self.semifinal_winners
-        self.info.config(text="FINAL")
+        tk.Label(
+            self.score_frame, text="ROUND SCORES",
+            fg="#f5d76e", bg="#0b1026",
+            font=font.Font(size=14, weight="bold")
+        ).pack(pady=4)
 
-        row = tk.Frame(self.match_frame, bg="#0b1026")
-        row.pack(pady=10)
+        header = "Player  "
+        for r in range(1, self.current_round + 1):
+            header += f" R{r} "
+        header += " Total"
+        tk.Label(self.score_frame, text=header,
+                 fg="white", bg="#0b1026").pack()
 
-        tk.Label(row, text=f"{a} vs {b}",
-                 fg="white", bg="#0b1026", width=32).pack(side="left")
-
-        tk.Button(row, text=a,
-                  command=lambda: self.champion(a)).pack(side="left", padx=6)
-        tk.Button(row, text=b,
-                  command=lambda: self.champion(b)).pack(side="left", padx=6)
-
-    def champion(self, name):
-        self.info.config(text=f"🏆 CHAMPION: {name}")
-
-# ---------------- RUN ----------------
-root = tk.Tk()
-app = SealedTournament(root)
-root.mainloop()
+        totals = {p: 0 for p in self.players}
+        for r, data in self.round
