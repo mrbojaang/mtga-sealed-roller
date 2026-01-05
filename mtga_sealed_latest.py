@@ -1,310 +1,192 @@
 import tkinter as tk
+import random
+import webbrowser
 from tkinter import font
-import copy
 
-# ================== KONSTANTER ==================
 BG = "#0b1026"
-WIN = 3
-DRAW = 1
+FG = "white"
+HIGHLIGHT = "#f5d76e"
+EXCLUDED = "#cc3333"
 
-MEDAL_ORDER = {"🥇": 0, "🥈": 1, "🥉": 2, "": 3}
-MEDAL_COLOR = {"🥇": "#ffd700", "🥈": "#dcdcdc", "🥉": "#cd7f32", "": "white"}
+SETS = [
+    ("Core Set 2021", "M21"),
+    ("Zendikar Rising", "ZNR"),
+    ("Kaldheim", "KHM"),
+    ("Strixhaven: School of Mages", "STX"),
+    ("Adventures in the Forgotten Realms", "AFR"),
+    ("Innistrad: Midnight Hunt", "MID"),
+    ("Innistrad: Crimson Vow", "VOW"),
+    ("Kamigawa: Neon Dynasty", "NEO"),
+    ("Streets of New Capenna", "SNC"),
+    ("Phyrexia: All Will Be One", "ONE"),
+    ("The Brothers' War", "BRO"),
+    ("March of the Machine", "MOM"),
+    ("Wilds of Eldraine", "WOE"),
+    ("The Lost Caverns of Ixalan", "LCI"),
+    ("Murders at Karlov Manor", "MKM"),
+    ("Outlaws of Thunder Junction", "OTJ"),
+    ("Bloomburrow", "BLB"),
+    ("Duskmourn: House of Horror", "DSK"),
+    ("Pioneer Masters", "PIO"),
+    ("Dominaria Remastered", "DMR"),
+    ("Innistrad Remastered", "INR"),
+    ("Shadows over Innistrad Remastered", "SIR"),
+    ("Amonkhet Remastered", "AKR"),
+    ("Kaladesh Remastered", "KLR"),
+    ("Ravnica Remastered", "RVR"),
+    ("Khans of Tarkir", "KTK"),
+    ("Modern Horizons 3", "MH3"),
+    ("Lord of the Rings: Tales of Middle-earth", "LTR"),
+    ("Final Fantasy", "FF"),
+    ("Avatar: The Last Airbender", "ATLA"),
+]
 
 
-# ================== APP ==================
-class SealedTournament:
+class ArenaRoller:
     def __init__(self, root):
         self.root = root
-        self.root.title("MTG Sealed Tournament")
-        self.root.geometry("1300x850")
+        self.root.title("MTG Arena – Sealed / Draft")
+        self.root.geometry("1200x800")
         self.root.configure(bg=BG)
 
-        # -------- DATA --------
-        self.players = []
-        self.current_round = 1
-        self.max_rounds = tk.IntVar(value=3)
-        self.best_of_playoff = tk.IntVar(value=1)
+        self.mode = tk.StringVar(value="Sealed")
+        self.players = tk.IntVar(value=2)
 
-        self.round_results = {}
-        self.in_playoffs = False
-        self.playoff_scores = {}
-        self.medals = {}
-
-        self.undo_stack = []
+        self.excluded = set()
+        self.result_set = None
 
         self.build_ui()
 
-    # ================== UI ==================
+    # ---------- UI ----------
     def build_ui(self):
-        self.title_font = font.Font(size=26, weight="bold")
-        self.header_font = font.Font(size=16, weight="bold")
-        self.text_font = font.Font(size=13)
-        self.medal_font = font.Font(size=18, weight="bold")
+        title_font = font.Font(size=26, weight="bold")
+        text_font = font.Font(size=13)
+        header_font = font.Font(size=16, weight="bold")
 
+        tk.Label(self.root, text="MTG ARENA – SEALED",
+                 fg=HIGHLIGHT, bg=BG,
+                 font=title_font).pack(pady=10)
+
+        # MODE RADIO
+        mode_frame = tk.Frame(self.root, bg=BG)
+        mode_frame.pack(pady=5)
+
+        tk.Radiobutton(
+            mode_frame, text="Sealed",
+            variable=self.mode, value="Sealed",
+            bg=BG, fg=FG, selectcolor=BG,
+            font=text_font
+        ).pack(side="left", padx=10)
+
+        tk.Radiobutton(
+            mode_frame, text="Draft",
+            variable=self.mode, value="Draft",
+            bg=BG, fg=FG, selectcolor=BG,
+            font=text_font
+        ).pack(side="left", padx=10)
+
+        # PLAYERS
+        players_frame = tk.Frame(self.root, bg=BG)
+        players_frame.pack(pady=6)
+
+        tk.Label(players_frame, text="Players:",
+                 fg=FG, bg=BG, font=text_font).pack(side="left")
+
+        tk.Spinbox(players_frame, from_=2, to=8,
+                   textvariable=self.players,
+                   width=5, font=text_font).pack(side="left", padx=6)
+
+        # ROLL
+        tk.Label(self.root, text="ROLL",
+                 fg=FG, bg=BG,
+                 font=header_font).pack(pady=6)
+
+        self.roll_btn = tk.Button(
+            self.root, text="🎲",
+            font=("Arial", 32),
+            command=self.roll
+        )
+        self.roll_btn.pack(pady=5)
+
+        tk.Button(self.root, text="Reset",
+                  command=self.reset).pack(pady=4)
+
+        # SET LIST
+        self.set_frame = tk.Frame(self.root, bg=BG)
+        self.set_frame.pack(pady=10)
+
+        self.set_labels = {}
+        self.draw_sets()
+
+        # RESULT LINKS
+        self.link_frame = tk.Frame(self.root, bg=BG)
+        self.link_frame.pack(pady=12)
+
+    # ---------- SET LIST ----------
+    def draw_sets(self):
+        cols = 3
+        for i, (name, code) in enumerate(SETS):
+            lbl = tk.Label(
+                self.set_frame, text=name,
+                fg=FG, bg=BG, cursor="hand2"
+            )
+            lbl.grid(row=i // cols, column=i % cols, padx=20, pady=3, sticky="w")
+            lbl.bind("<Button-1>", lambda e, c=code: self.toggle_set(c))
+            self.set_labels[code] = lbl
+
+    def toggle_set(self, code):
+        if code in self.excluded:
+            self.excluded.remove(code)
+            self.set_labels[code].config(fg=FG)
+        else:
+            self.excluded.add(code)
+            self.set_labels[code].config(fg=EXCLUDED)
+
+    # ---------- ROLL ----------
+    def roll(self):
+        available = [s for s in SETS if s[1] not in self.excluded]
+        if not available:
+            return
+
+        self.result_set = random.choice(available)
+        self.show_links()
+
+    def reset(self):
+        self.result_set = None
+        self.excluded.clear()
+        for lbl in self.set_labels.values():
+            lbl.config(fg=FG)
+        for w in self.link_frame.winfo_children():
+            w.destroy()
+
+    # ---------- LINKS ----------
+    def build_link(self, code):
+        return f"https://draftsim.com/draft.php?mode={self.mode.get()}_{code}"
+
+    def show_links(self):
+        for w in self.link_frame.winfo_children():
+            w.destroy()
+
+        name, code = self.result_set
         tk.Label(
-            self.root,
-            text="MTG SEALED TOURNAMENT",
-            fg="#f5d76e",
+            self.link_frame,
+            text=name,
+            fg=HIGHLIGHT,
             bg=BG,
-            font=self.title_font
-        ).pack(pady=10)
+            font=("Arial", 18, "bold")
+        ).pack(pady=6)
 
-        setup = tk.Frame(self.root, bg=BG)
-        setup.pack()
-
-        tk.Label(setup, text="Group rounds:", fg="white", bg=BG)\
-            .grid(row=0, column=0)
-        tk.OptionMenu(setup, self.max_rounds, 1, 2, 3, 4, 5)\
-            .grid(row=0, column=1)
-
-        tk.Label(setup, text="Best of (Playoffs):", fg="white", bg=BG)\
-            .grid(row=0, column=2)
-        tk.OptionMenu(setup, self.best_of_playoff, 1, 3, 5, 7)\
-            .grid(row=0, column=3)
-
-        self.entries = []
-        for i in range(8):
-            e = tk.Entry(setup, width=24)
-            e.grid(row=i + 1, column=0, columnspan=4, pady=2)
-            self.entries.append(e)
-
-        tk.Button(
-            self.root,
-            text="Start Group Stage",
-            font=self.text_font,
-            command=self.start_group
-        ).pack(pady=8)
-
-        self.info = tk.Label(
-            self.root,
-            fg="white",
-            bg=BG,
-            font=self.header_font
-        )
-        self.info.pack(pady=6)
-
-        main = tk.Frame(self.root, bg=BG)
-        main.pack(fill="both", expand=True)
-
-        self.match_frame = tk.Frame(main, bg=BG)
-        self.match_frame.pack(side="left", padx=20)
-
-        self.playoff_frame = tk.Frame(main, bg=BG)
-        self.playoff_frame.pack(side="left", padx=20)
-
-        self.score_frame = tk.Frame(main, bg=BG)
-        self.score_frame.pack(side="right", padx=20)
-
-        nav = tk.Frame(self.root, bg=BG)
-        nav.pack(pady=10)
-
-        tk.Button(nav, text="◀ Previous Round", command=self.prev_round)\
-            .pack(side="left", padx=5)
-        tk.Button(nav, text="Undo", command=self.undo)\
-            .pack(side="left", padx=5)
-        tk.Button(nav, text="Next Round ▶", command=self.next_round)\
-            .pack(side="left", padx=5)
-
-        self.playoff_btn = tk.Button(
-            self.root,
-            text="Start Playoffs",
-            font=self.header_font,
-            command=self.start_playoffs
-        )
-
-    # ================== UNDO ==================
-    def snapshot(self):
-        self.undo_stack.append({
-            "players": self.players[:],
-            "current_round": self.current_round,
-            "round_results": copy.deepcopy(self.round_results),
-            "in_playoffs": self.in_playoffs,
-            "playoff_scores": copy.deepcopy(self.playoff_scores),
-            "medals": copy.deepcopy(self.medals)
-        })
-
-    def undo(self):
-        if not self.undo_stack:
-            return
-        state = self.undo_stack.pop()
-        self.players = state["players"]
-        self.current_round = state["current_round"]
-        self.round_results = state["round_results"]
-        self.in_playoffs = state["in_playoffs"]
-        self.playoff_scores = state["playoff_scores"]
-        self.medals = state["medals"]
-        self.redraw()
-
-    # ================== GROUP ==================
-    def start_group(self):
-        self.players = [e.get() for e in self.entries if e.get()]
-        if len(self.players) < 4:
-            return
-
-        self.undo_stack.clear()
-        self.in_playoffs = False
-        self.current_round = 1
-        self.round_results = {1: {p: 0 for p in self.players}}
-        self.redraw()
-
-    def redraw(self):
-        for frame in (self.match_frame, self.playoff_frame, self.score_frame):
-            for w in frame.winfo_children():
-                w.destroy()
-
-        if self.in_playoffs:
-            self.draw_playoffs()
-        else:
-            self.draw_group()
-
-    def draw_group(self):
-        self.info.config(
-            text=f"GROUP STAGE – ROUND {self.current_round}/{self.max_rounds.get()}"
-        )
-
-        temp = self.players[:]
-        while len(temp) >= 2:
-            a = temp.pop(0)
-            b = temp.pop(0)
-            self.group_match(a, b)
-
-        self.draw_group_scoreboard()
-
-    def group_match(self, a, b):
-        row = tk.Frame(self.match_frame, bg=BG)
-        row.pack(pady=4)
-
-        tk.Label(row, text=f"{a} vs {b}",
-                 fg="white", bg=BG, width=24).pack(side="left")
-
-        tk.Button(row, text=a,
-                  command=lambda: self.group_result(a, b, a)).pack(side="left")
-        tk.Button(row, text="Draw",
-                  command=lambda: self.group_result(a, b, None)).pack(side="left")
-        tk.Button(row, text=b,
-                  command=lambda: self.group_result(a, b, b)).pack(side="left")
-
-    def group_result(self, a, b, winner):
-        self.snapshot()
-        if winner == a:
-            self.round_results[self.current_round][a] += WIN
-        elif winner == b:
-            self.round_results[self.current_round][b] += WIN
-        else:
-            self.round_results[self.current_round][a] += DRAW
-            self.round_results[self.current_round][b] += DRAW
-        self.draw_group_scoreboard()
-
-    def next_round(self):
-        if self.current_round >= self.max_rounds.get():
-            self.playoff_btn.pack(pady=8)
-            return
-        self.snapshot()
-        self.current_round += 1
-        self.round_results[self.current_round] = {p: 0 for p in self.players}
-        self.redraw()
-
-    def prev_round(self):
-        if self.current_round <= 1:
-            return
-        self.snapshot()
-        del self.round_results[self.current_round]
-        self.current_round -= 1
-        self.redraw()
-
-    def draw_group_scoreboard(self):
-        for w in self.score_frame.winfo_children():
-            w.destroy()
-
-        tk.Label(self.score_frame, text="GROUP SCOREBOARD",
-                 fg="#f5d76e", bg=BG,
-                 font=self.header_font).pack()
-
-        totals = {
-            p: sum(r.get(p, 0) for r in self.round_results.values())
-            for p in self.players
-        }
-
-        for p, pts in sorted(totals.items(), key=lambda x: x[1], reverse=True):
-            tk.Label(self.score_frame, text=f"{p}: {pts}",
-                     fg="white", bg=BG,
-                     font=self.text_font).pack(anchor="w")
-
-    # ================== PLAYOFF ==================
-    def start_playoffs(self):
-        self.snapshot()
-        self.in_playoffs = True
-
-        totals = {
-            p: sum(r.get(p, 0) for r in self.round_results.values())
-            for p in self.players
-        }
-        ranked = sorted(totals, key=totals.get, reverse=True)[:4]
-
-        self.playoff_scores = {p: 0 for p in ranked}
-        self.medals = {}
-        self.redraw()
-
-    def draw_playoffs(self):
-        self.info.config(text="PLAYOFFS")
-
-        p = list(self.playoff_scores.keys())
-        self.playoff_match("FINAL", p[0], p[1])
-        self.playoff_match("3RD PLACE", p[2], p[3])
-        self.draw_playoff_scoreboard()
-
-    def playoff_match(self, title, a, b):
-        tk.Label(self.match_frame, text=title,
-                 fg="#f5d76e", bg=BG,
-                 font=self.header_font).pack(pady=4)
-
-        row = tk.Frame(self.match_frame, bg=BG)
-        row.pack(pady=4)
-
-        tk.Label(row, text=f"{a} vs {b}",
-                 fg="white", bg=BG).pack(side="left")
-
-        tk.Button(row, text=a,
-                  command=lambda: self.playoff_result(title, a, b)).pack(side="left")
-        tk.Button(row, text=b,
-                  command=lambda: self.playoff_result(title, b, a)).pack(side="left")
-
-    def playoff_result(self, match, winner, loser):
-        self.snapshot()
-        self.playoff_scores[winner] += 1
-
-        needed = self.best_of_playoff.get() // 2 + 1
-        if self.playoff_scores[winner] >= needed:
-            if match == "FINAL":
-                self.medals[winner] = "🥇"
-                self.medals[loser] = "🥈"
-            else:
-                self.medals[winner] = "🥉"
-
-        self.draw_playoff_scoreboard()
-
-    def draw_playoff_scoreboard(self):
-        for w in self.playoff_frame.winfo_children():
-            w.destroy()
-
-        tk.Label(self.playoff_frame, text="PLAYOFF SCOREBOARD",
-                 fg="#f5d76e", bg=BG,
-                 font=self.header_font).pack()
-
-        for p in sorted(self.playoff_scores,
-                        key=lambda x: MEDAL_ORDER.get(self.medals.get(x, ""), 3)):
-            medal = self.medals.get(p, "")
-            tk.Label(
-                self.playoff_frame,
-                text=f"{medal} {p}",
-                fg=MEDAL_COLOR[medal],
-                bg=BG,
-                font=self.medal_font if medal else self.text_font
-            ).pack(anchor="w")
+        for i in range(self.players.get()):
+            url = self.build_link(code)
+            tk.Button(
+                self.link_frame,
+                text=f"{self.mode.get()} {i + 1}",
+                command=lambda u=url: webbrowser.open(u)
+            ).pack(pady=2)
 
 
-# ================== RUN ==================
+# ---------- RUN ----------
 if __name__ == "__main__":
     root = tk.Tk()
-    app = SealedTournament(root)
+    ArenaRoller(root)
     root.mainloop()
