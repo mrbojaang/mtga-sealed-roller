@@ -1,6 +1,7 @@
 import tkinter as tk
 import random
 import webbrowser
+import winsound
 from tkinter import font
 
 BG = "#0b1026"
@@ -10,34 +11,18 @@ EXCLUDED = "#cc3333"
 PICKED = "#33cc66"
 
 SETS = [
-    ("Core Set 2021", "M21"),
     ("Zendikar Rising", "ZNR"),
     ("Kaldheim", "KHM"),
-    ("Strixhaven: School of Mages", "STX"),
-    ("Adventures in the Forgotten Realms", "AFR"),
-    ("Innistrad: Midnight Hunt", "MID"),
-    ("Innistrad: Crimson Vow", "VOW"),
+    ("Strixhaven", "STX"),
     ("Kamigawa: Neon Dynasty", "NEO"),
     ("Streets of New Capenna", "SNC"),
     ("Phyrexia: All Will Be One", "ONE"),
-    ("The Brothers' War", "BRO"),
     ("March of the Machine", "MOM"),
     ("Wilds of Eldraine", "WOE"),
     ("The Lost Caverns of Ixalan", "LCI"),
-    ("Murders at Karlov Manor", "MKM"),
-    ("Outlaws of Thunder Junction", "OTJ"),
     ("Bloomburrow", "BLB"),
-    ("Duskmourn: House of Horror", "DSK"),
-    ("Pioneer Masters", "PIO"),
-    ("Dominaria Remastered", "DMR"),
-    ("Innistrad Remastered", "INR"),
-    ("Shadows over Innistrad Remastered", "SIR"),
-    ("Amonkhet Remastered", "AKR"),
-    ("Kaladesh Remastered", "KLR"),
-    ("Ravnica Remastered", "RVR"),
-    ("Khans of Tarkir", "KTK"),
+    ("Duskmourn", "DSK"),
     ("Modern Horizons 3", "MH3"),
-    ("Lord of the Rings: Tales of Middle-earth", "LTR"),
     ("Final Fantasy", "FF"),
     ("Avatar: The Last Airbender", "ATLA"),
 ]
@@ -46,13 +31,14 @@ SETS = [
 class ArenaRoller:
     def __init__(self, root):
         self.root = root
-        self.root.title("MTG Arena – Sealed / Draft")
+        self.root.title("MTG Arena Roller")
         self.root.geometry("1200x800")
         self.root.configure(bg=BG)
 
         self.mode = tk.StringVar(value="Sealed")
         self.players = tk.IntVar(value=2)
 
+        self.roll_mode = None  # "AR" or "AP"
         self.excluded = set()
         self.picked = set()
         self.result_set = None
@@ -63,9 +49,8 @@ class ArenaRoller:
     def build_ui(self):
         title_font = font.Font(size=26, weight="bold")
         text_font = font.Font(size=13)
-        header_font = font.Font(size=16, weight="bold")
 
-        tk.Label(self.root, text="MTG ARENA – SEALED / DRAFT",
+        tk.Label(self.root, text="MTG ARENA",
                  fg=HIGHLIGHT, bg=BG,
                  font=title_font).pack(pady=10)
 
@@ -82,36 +67,41 @@ class ArenaRoller:
             ).pack(side="left", padx=10)
 
         # PLAYERS
-        players_frame = tk.Frame(self.root, bg=BG)
-        players_frame.pack(pady=6)
+        pframe = tk.Frame(self.root, bg=BG)
+        pframe.pack(pady=6)
 
-        tk.Label(players_frame, text="Players:",
-                 fg=FG, bg=BG, font=text_font).pack(side="left")
-
-        tk.Spinbox(players_frame, from_=2, to=8,
+        tk.Label(pframe, text="Players:", fg=FG, bg=BG).pack(side="left")
+        tk.Spinbox(pframe, from_=2, to=8,
                    textvariable=self.players,
-                   width=5, font=text_font).pack(side="left", padx=6)
+                   width=5).pack(side="left", padx=6)
 
         # ROLL CONTROLS
         roll_frame = tk.Frame(self.root, bg=BG)
-        roll_frame.pack(pady=10)
+        roll_frame.pack(pady=15)
 
-        tk.Button(roll_frame, text="AR",
-                  font=("Arial", 14, "bold"),
-                  command=self.roll_all_random)\
-            .pack(side="left", padx=10)
+        self.ar_btn = tk.Button(
+            roll_frame, text="AR",
+            width=5,
+            command=lambda: self.select_mode("AR")
+        )
+        self.ar_btn.pack(side="left", padx=8)
 
-        tk.Label(roll_frame, text="🎲",
-                 font=("Arial", 32),
-                 bg=BG, fg=FG).pack(side="left", padx=10)
+        self.dice_btn = tk.Button(
+            roll_frame, text="🎲",
+            font=("Arial", 42),
+            command=self.roll_dice
+        )
+        self.dice_btn.pack(side="left", padx=12)
 
-        tk.Button(roll_frame, text="AP",
-                  font=("Arial", 14, "bold"),
-                  command=self.roll_all_pick)\
-            .pack(side="left", padx=10)
+        self.ap_btn = tk.Button(
+            roll_frame, text="AP",
+            width=5,
+            command=lambda: self.select_mode("AP")
+        )
+        self.ap_btn.pack(side="left", padx=8)
 
         tk.Button(self.root, text="Reset",
-                  command=self.reset).pack(pady=4)
+                  command=self.reset).pack(pady=5)
 
         # SET LIST
         self.set_frame = tk.Frame(self.root, bg=BG)
@@ -120,9 +110,18 @@ class ArenaRoller:
         self.set_labels = {}
         self.draw_sets()
 
-        # LINKS
         self.link_frame = tk.Frame(self.root, bg=BG)
         self.link_frame.pack(pady=12)
+
+    # ---------- MODE ----------
+    def select_mode(self, mode):
+        self.roll_mode = mode
+        if mode == "AR":
+            self.ar_btn.config(state="disabled")
+            self.ap_btn.config(state="normal")
+        else:
+            self.ap_btn.config(state="disabled")
+            self.ar_btn.config(state="normal")
 
     # ---------- SET LIST ----------
     def draw_sets(self):
@@ -140,7 +139,6 @@ class ArenaRoller:
 
     def toggle_set(self, code):
         lbl = self.set_labels[code]
-
         if code in self.excluded:
             self.excluded.remove(code)
             lbl.config(fg=FG)
@@ -152,29 +150,30 @@ class ArenaRoller:
             self.picked.add(code)
             lbl.config(fg=PICKED)
 
-    # ---------- ROLL LOGIC ----------
-    def roll_all_random(self):
-        pool = [s for s in SETS if s[1] not in self.excluded]
+    # ---------- ROLL ----------
+    def roll_dice(self):
+        if not self.roll_mode:
+            return
+
+        self.animate_dice(6)
+
+        if self.roll_mode == "AR":
+            pool = [s for s in SETS if s[1] not in self.excluded]
+        else:
+            pool = [s for s in SETS if s[1] in self.picked]
+
         if not pool:
             return
+
         self.result_set = random.choice(pool)
         self.show_links()
 
-    def roll_all_pick(self):
-        pool = [s for s in SETS if s[1] in self.picked]
-        if not pool:
+    def animate_dice(self, steps):
+        if steps <= 0:
+            winsound.MessageBeep()
             return
-        self.result_set = random.choice(pool)
-        self.show_links()
-
-    def reset(self):
-        self.result_set = None
-        self.excluded.clear()
-        self.picked.clear()
-        for lbl in self.set_labels.values():
-            lbl.config(fg=FG)
-        for w in self.link_frame.winfo_children():
-            w.destroy()
+        winsound.Beep(800, 30)
+        self.root.after(40, lambda: self.animate_dice(steps - 1))
 
     # ---------- LINKS ----------
     def build_link(self, code):
@@ -194,12 +193,27 @@ class ArenaRoller:
         ).pack(pady=6)
 
         for i in range(self.players.get()):
-            url = self.build_link(code)
             tk.Button(
                 self.link_frame,
                 text=f"{self.mode.get()} {i + 1}",
-                command=lambda u=url: webbrowser.open(u)
+                command=lambda u=self.build_link(code): webbrowser.open(u)
             ).pack(pady=2)
+
+    # ---------- RESET ----------
+    def reset(self):
+        self.roll_mode = None
+        self.excluded.clear()
+        self.picked.clear()
+        self.result_set = None
+
+        self.ar_btn.config(state="normal")
+        self.ap_btn.config(state="normal")
+
+        for lbl in self.set_labels.values():
+            lbl.config(fg=FG)
+
+        for w in self.link_frame.winfo_children():
+            w.destroy()
 
 
 # ---------- RUN ----------
