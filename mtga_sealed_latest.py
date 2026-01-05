@@ -11,22 +11,40 @@ EXCLUDED = "#cc3333"
 PICKED = "#33cc66"
 
 SETS = [
+    ("Core Set 2021", "M21"),
     ("Zendikar Rising", "ZNR"),
     ("Kaldheim", "KHM"),
-    ("Strixhaven", "STX"),
+    ("Strixhaven: School of Mages", "STX"),
+    ("Adventures in the Forgotten Realms", "AFR"),
+    ("Innistrad: Midnight Hunt", "MID"),
+    ("Innistrad: Crimson Vow", "VOW"),
     ("Kamigawa: Neon Dynasty", "NEO"),
     ("Streets of New Capenna", "SNC"),
+    ("Dominaria United", "DMU"),
+    ("The Brothers' War", "BRO"),
     ("Phyrexia: All Will Be One", "ONE"),
     ("March of the Machine", "MOM"),
     ("Wilds of Eldraine", "WOE"),
     ("The Lost Caverns of Ixalan", "LCI"),
+    ("Murders at Karlov Manor", "MKM"),
+    ("Outlaws of Thunder Junction", "OTJ"),
     ("Bloomburrow", "BLB"),
-    ("Duskmourn", "DSK"),
-    ("Modern Horizons 3", "MH3"),
-    ("Final Fantasy", "FF"),
-    ("Avatar: The Last Airbender", "ATLA"),
-]
+    ("Duskmourn: House of Horror", "DSK"),
 
+    # Arena Remastered
+    ("Amonkhet Remastered", "AKR"),
+    ("Kaladesh Remastered", "KLR"),
+    ("Dominaria Remastered", "DMR"),
+    ("Innistrad Remastered", "INR"),
+    ("Shadows over Innistrad Remastered", "SIR"),
+    ("Ravnica Remastered", "RVR"),
+    ("Khans of Tarkir", "KTK"),
+
+    # Special
+    ("Pioneer Masters", "PIO"),
+    ("Modern Horizons 3", "MH3"),
+    ("Lord of the Rings: Tales of Middle-earth", "LTR"),
+]
 
 class ArenaRoller:
     def __init__(self, root):
