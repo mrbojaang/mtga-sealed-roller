@@ -65,9 +65,10 @@ class ArenaRoller:
         self.roll_mode = None
         self.excluded = set()
         self.picked = set()
+        self.already_used = set()
         self.result = None
 
-        # timer
+        # Timer
         self.time_left = 0
         self.timer_running = False
         self.timer_paused = False
@@ -76,9 +77,13 @@ class ArenaRoller:
 
     # ---------------- UI ----------------
     def build_ui(self):
-        tk.Label(self.root, text="MTG ARENA",
-                 fg=HIGHLIGHT, bg=BG,
-                 font=("Arial", 26, "bold")).pack(pady=10)
+        tk.Label(
+            self.root,
+            text="MTG ARENA",
+            fg=HIGHLIGHT,
+            bg=BG,
+            font=("Arial", 26, "bold")
+        ).pack(pady=10)
 
         # MODE
         mode_frame = tk.Frame(self.root, bg=BG)
@@ -86,9 +91,13 @@ class ArenaRoller:
 
         for m in ("Sealed", "Draft"):
             tk.Radiobutton(
-                mode_frame, text=m,
-                variable=self.mode, value=m,
-                bg=BG, fg=FG, selectcolor=BG
+                mode_frame,
+                text=m,
+                variable=self.mode,
+                value=m,
+                bg=BG,
+                fg=FG,
+                selectcolor=BG
             ).pack(side="left", padx=12)
 
         # PLAYERS
@@ -102,8 +111,10 @@ class ArenaRoller:
         roll = tk.Frame(self.root, bg=BG)
         roll.pack(pady=20)
 
-        self.ar_btn = tk.Button(roll, text="AR", width=5,
-                                 command=lambda: self.select_roll_mode("AR"))
+        self.ar_btn = tk.Button(
+            roll, text="AR", width=5,
+            command=lambda: self.select_roll_mode("AR")
+        )
         self.ar_btn.pack(side="left", padx=8)
 
         self.dice_btn = tk.Button(
@@ -112,8 +123,10 @@ class ArenaRoller:
         )
         self.dice_btn.pack(side="left", padx=12)
 
-        self.ap_btn = tk.Button(roll, text="AP", width=5,
-                                 command=lambda: self.select_roll_mode("AP"))
+        self.ap_btn = tk.Button(
+            roll, text="AP", width=5,
+            command=lambda: self.select_roll_mode("AP")
+        )
         self.ap_btn.pack(side="left", padx=8)
 
         tk.Button(self.root, text="Reset", command=self.reset).pack(pady=4)
@@ -125,8 +138,13 @@ class ArenaRoller:
         self.labels = {}
         cols = 3
         for i, (name, code) in enumerate(SETS):
-            lbl = tk.Label(self.set_frame, text=name,
-                           fg=FG, bg=BG, cursor="hand2")
+            lbl = tk.Label(
+                self.set_frame,
+                text=name,
+                fg=FG,
+                bg=BG,
+                cursor="hand2"
+            )
             lbl.grid(row=i // cols, column=i % cols,
                      padx=22, pady=3, sticky="w")
             lbl.bind("<Button-1>", lambda e, c=code: self.toggle_set(c))
@@ -140,30 +158,29 @@ class ArenaRoller:
         self.timer_frame = tk.Frame(self.root, bg=BG)
         self.timer_frame.place(x=10, y=770)
 
-        self.timer_label = tk.Label(self.timer_frame, text="",
-                                    fg=FG, bg=BG,
-                                    font=("Arial", 16, "bold"))
+        self.timer_label = tk.Label(
+            self.timer_frame,
+            text="",
+            fg=FG,
+            bg=BG,
+            font=("Arial", 16, "bold")
+        )
         self.timer_label.pack(side="left")
 
-        self.start_timer_btn = tk.Button(
+        tk.Button(
             self.timer_frame, text="Start",
             command=self.start_timer
-        )
-        self.start_timer_btn.pack(side="left", padx=4)
+        ).pack(side="left", padx=4)
 
-        self.pause_timer_btn = tk.Button(
+        tk.Button(
             self.timer_frame, text="Pause",
             command=self.pause_timer
-        )
-        self.pause_timer_btn.pack(side="left", padx=4)
+        ).pack(side="left", padx=4)
 
-        self.reset_timer_btn = tk.Button(
+        tk.Button(
             self.timer_frame, text="Reset",
             command=self.reset_timer
-        )
-        self.reset_timer_btn.pack(side="left", padx=4)
-
-        self.hide_timer()
+        ).pack(side="left", padx=4)
 
     # ---------------- SET TOGGLE ----------------
     def toggle_set(self, code):
@@ -201,14 +218,25 @@ class ArenaRoller:
         self.root.after(80, self.animate_dice)
 
     def finish_roll(self):
-        pool = (
-            [s for s in SETS if s[1] not in self.excluded]
-            if self.roll_mode == "AR"
-            else [s for s in SETS if s[1] in self.picked]
-        )
+        if self.roll_mode == "AR":
+            pool = [
+                s for s in SETS
+                if s[1] not in self.excluded
+                and s[1] not in self.already_used
+            ]
+        else:  # AP
+            pool = [
+                s for s in SETS
+                if s[1] in self.picked
+                and s[1] not in self.already_used
+            ]
+
         if not pool:
+            winsound.Beep(300, 300)
             return
+
         self.result = random.choice(pool)
+        self.already_used.add(self.result[1])
         self.show_links()
 
     # ---------------- LINKS ----------------
@@ -217,18 +245,29 @@ class ArenaRoller:
             w.destroy()
 
         name, code = self.result
-        tk.Label(self.link_frame, text=name,
-                 fg=HIGHLIGHT, bg=BG,
-                 font=("Arial", 18, "bold")).pack(pady=6)
+
+        tk.Label(
+            self.link_frame,
+            text=name,
+            fg=HIGHLIGHT,
+            bg=BG,
+            font=("Arial", 18, "bold")
+        ).pack(pady=6)
 
         if not self.mode.get():
             return
 
+        links_container = tk.Frame(self.link_frame, bg=BG)
+        links_container.pack()
+
         for i in range(self.players.get()):
             url = f"https://draftsim.com/draft.php?mode={self.mode.get()}_{code}"
-            tk.Button(self.link_frame,
-                      text=f"{self.mode.get()} {i+1}",
-                      command=lambda u=url: webbrowser.open(u)).pack(pady=2)
+            tk.Button(
+                links_container,
+                text=f"{self.mode.get()} {i+1}",
+                width=22,
+                command=lambda u=url: webbrowser.open(u)
+            ).pack(pady=2)
 
     # ---------------- TIMER ----------------
     def start_timer(self):
@@ -238,7 +277,6 @@ class ArenaRoller:
             self.time_left = DRAFT_TIME if self.mode.get() == "Draft" else SEALED_TIME
             self.timer_running = True
             self.timer_paused = False
-            self.show_timer()
             self.update_timer()
 
     def update_timer(self):
@@ -261,26 +299,18 @@ class ArenaRoller:
     def pause_timer(self):
         if self.timer_running:
             self.timer_paused = not self.timer_paused
-            self.pause_timer_btn.config(
-                text="Resume" if self.timer_paused else "Pause"
-            )
 
     def reset_timer(self):
         self.timer_running = False
         self.timer_paused = False
         self.timer_label.config(text="")
 
-    def hide_timer(self):
-        self.timer_label.config(text="")
-
-    def show_timer(self):
-        pass
-
     # ---------------- RESET ----------------
     def reset(self):
         self.roll_mode = None
         self.excluded.clear()
         self.picked.clear()
+        self.already_used.clear()
         self.result = None
 
         self.ar_btn.config(state="normal")
