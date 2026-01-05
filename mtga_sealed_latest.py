@@ -30,8 +30,12 @@ SETS = [
     ("Outlaws of Thunder Junction", "OTJ"),
     ("Bloomburrow", "BLB"),
     ("Duskmourn: House of Horror", "DSK"),
+    ("Aetherdrift", "DFT"),
+    ("Edge of Eternity", "EOE"),
+    ("Tarkir: Dragonstorm", "TDM"),
+    ("Foundations", "FDN"),
 
-    # Arena Remastered
+    # Remastered / special
     ("Amonkhet Remastered", "AKR"),
     ("Kaladesh Remastered", "KLR"),
     ("Dominaria Remastered", "DMR"),
@@ -40,11 +44,14 @@ SETS = [
     ("Ravnica Remastered", "RVR"),
     ("Khans of Tarkir", "KTK"),
 
-    # Special
+    # Masters / Universes Beyond
     ("Pioneer Masters", "PIO"),
     ("Modern Horizons 3", "MH3"),
     ("Lord of the Rings: Tales of Middle-earth", "LTR"),
+    ("Avatar: The Last Airbender", "TLA"),
+    ("Final Fantasy", "FIN"),
 ]
+
 
 class ArenaRoller:
     def __init__(self, root):
