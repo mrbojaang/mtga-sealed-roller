@@ -7,6 +7,7 @@ BG = "#0b1026"
 FG = "white"
 HIGHLIGHT = "#f5d76e"
 EXCLUDED = "#cc3333"
+PICKED = "#33cc66"
 
 SETS = [
     ("Core Set 2021", "M21"),
@@ -53,6 +54,7 @@ class ArenaRoller:
         self.players = tk.IntVar(value=2)
 
         self.excluded = set()
+        self.picked = set()
         self.result_set = None
 
         self.build_ui()
@@ -63,27 +65,21 @@ class ArenaRoller:
         text_font = font.Font(size=13)
         header_font = font.Font(size=16, weight="bold")
 
-        tk.Label(self.root, text="MTG ARENA – SEALED",
+        tk.Label(self.root, text="MTG ARENA – SEALED / DRAFT",
                  fg=HIGHLIGHT, bg=BG,
                  font=title_font).pack(pady=10)
 
-        # MODE RADIO
+        # MODE
         mode_frame = tk.Frame(self.root, bg=BG)
-        mode_frame.pack(pady=5)
+        mode_frame.pack()
 
-        tk.Radiobutton(
-            mode_frame, text="Sealed",
-            variable=self.mode, value="Sealed",
-            bg=BG, fg=FG, selectcolor=BG,
-            font=text_font
-        ).pack(side="left", padx=10)
-
-        tk.Radiobutton(
-            mode_frame, text="Draft",
-            variable=self.mode, value="Draft",
-            bg=BG, fg=FG, selectcolor=BG,
-            font=text_font
-        ).pack(side="left", padx=10)
+        for m in ("Sealed", "Draft"):
+            tk.Radiobutton(
+                mode_frame, text=m,
+                variable=self.mode, value=m,
+                bg=BG, fg=FG, selectcolor=BG,
+                font=text_font
+            ).pack(side="left", padx=10)
 
         # PLAYERS
         players_frame = tk.Frame(self.root, bg=BG)
@@ -96,17 +92,23 @@ class ArenaRoller:
                    textvariable=self.players,
                    width=5, font=text_font).pack(side="left", padx=6)
 
-        # ROLL
-        tk.Label(self.root, text="ROLL",
-                 fg=FG, bg=BG,
-                 font=header_font).pack(pady=6)
+        # ROLL CONTROLS
+        roll_frame = tk.Frame(self.root, bg=BG)
+        roll_frame.pack(pady=10)
 
-        self.roll_btn = tk.Button(
-            self.root, text="🎲",
-            font=("Arial", 32),
-            command=self.roll
-        )
-        self.roll_btn.pack(pady=5)
+        tk.Button(roll_frame, text="AR",
+                  font=("Arial", 14, "bold"),
+                  command=self.roll_all_random)\
+            .pack(side="left", padx=10)
+
+        tk.Label(roll_frame, text="🎲",
+                 font=("Arial", 32),
+                 bg=BG, fg=FG).pack(side="left", padx=10)
+
+        tk.Button(roll_frame, text="AP",
+                  font=("Arial", 14, "bold"),
+                  command=self.roll_all_pick)\
+            .pack(side="left", padx=10)
 
         tk.Button(self.root, text="Reset",
                   command=self.reset).pack(pady=4)
@@ -118,7 +120,7 @@ class ArenaRoller:
         self.set_labels = {}
         self.draw_sets()
 
-        # RESULT LINKS
+        # LINKS
         self.link_frame = tk.Frame(self.root, bg=BG)
         self.link_frame.pack(pady=12)
 
@@ -130,30 +132,45 @@ class ArenaRoller:
                 self.set_frame, text=name,
                 fg=FG, bg=BG, cursor="hand2"
             )
-            lbl.grid(row=i // cols, column=i % cols, padx=20, pady=3, sticky="w")
-            lbl.bind("<Button-1>", lambda e, c=code: self.toggle_set(c))
+            lbl.grid(row=i // cols, column=i % cols,
+                     padx=20, pady=3, sticky="w")
+            lbl.bind("<Button-1>",
+                     lambda e, c=code: self.toggle_set(c))
             self.set_labels[code] = lbl
 
     def toggle_set(self, code):
+        lbl = self.set_labels[code]
+
         if code in self.excluded:
             self.excluded.remove(code)
-            self.set_labels[code].config(fg=FG)
-        else:
+            lbl.config(fg=FG)
+        elif code in self.picked:
+            self.picked.remove(code)
             self.excluded.add(code)
-            self.set_labels[code].config(fg=EXCLUDED)
+            lbl.config(fg=EXCLUDED)
+        else:
+            self.picked.add(code)
+            lbl.config(fg=PICKED)
 
-    # ---------- ROLL ----------
-    def roll(self):
-        available = [s for s in SETS if s[1] not in self.excluded]
-        if not available:
+    # ---------- ROLL LOGIC ----------
+    def roll_all_random(self):
+        pool = [s for s in SETS if s[1] not in self.excluded]
+        if not pool:
             return
+        self.result_set = random.choice(pool)
+        self.show_links()
 
-        self.result_set = random.choice(available)
+    def roll_all_pick(self):
+        pool = [s for s in SETS if s[1] in self.picked]
+        if not pool:
+            return
+        self.result_set = random.choice(pool)
         self.show_links()
 
     def reset(self):
         self.result_set = None
         self.excluded.clear()
+        self.picked.clear()
         for lbl in self.set_labels.values():
             lbl.config(fg=FG)
         for w in self.link_frame.winfo_children():
